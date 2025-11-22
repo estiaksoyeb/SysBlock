@@ -1,0 +1,50 @@
+{
+  "allFiles": [
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/PenaltyManager.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 3733,
+          "line": 105
+        },
+        "start": {
+          "column": 1,
+          "index": 3733,
+          "line": 105
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockerService.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 4244,
+          "line": 118
+        },
+        "start": {
+          "column": 1,
+          "index": 4244,
+          "line": 118
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockingActivity.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 12248,
+          "line": 320
+        },
+        "start": {
+          "column": 1,
+          "index": 12248,
+          "line": 320
+        }
+      }
+    }
+  ],
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/PenaltyManager.kt"
+}
