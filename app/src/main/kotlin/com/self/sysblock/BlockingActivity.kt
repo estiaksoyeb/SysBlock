@@ -36,12 +36,8 @@ class BlockingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         overridePendingTransition(0, 0)
-
         val blockedPkg = intent.getStringExtra("pkg_name") ?: "App"
-
-        setContent {
-            BlockingSessionScreen(blockedPkg)
-        }
+        setContent { BlockingSessionScreen(blockedPkg) }
     }
 }
 
@@ -50,27 +46,20 @@ fun BlockingSessionScreen(pkgName: String) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    // UI State
     var progress by remember { mutableStateOf(0.0f) }
     var canSelectSession by remember { mutableStateOf(false) }
     var usageStats by remember { mutableStateOf(Pair(0, 0)) }
     
-    // --- CRITICAL FIX: Mutable State for Penalty ---
-    // We do NOT use 'remember { ... }' for the initial value because we want it to start empty
-    // and update immediately when the screen resumes.
+    // State initialization with defaults
     var isLockedOut by remember { mutableStateOf(false) }
-    var penaltyStatus by remember { mutableStateOf(PenaltyManager.Status(0, false, 0L)) }
+    var penaltyStatus by remember { mutableStateOf(PenaltyManager.Status(0, false, 0L, 2)) }
 
-    // --- REFRESH DATA ON RESUME ---
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // Every time this screen appears, check the database FRESH.
                 isLockedOut = PenaltyManager.isLockedOut(context, pkgName)
                 penaltyStatus = PenaltyManager.getStatus(context, pkgName)
                 usageStats = getUsageInfo(context, pkgName)
-
-                // Restart timer logic if we are allowed in
                 if (!isLockedOut) {
                     progress = 0f
                     canSelectSession = false
@@ -81,7 +70,6 @@ fun BlockingSessionScreen(pkgName: String) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Progress Bar Animation (Only runs when not locked out)
     LaunchedEffect(isLockedOut) {
         if (!isLockedOut) {
             val steps = 100
@@ -109,9 +97,8 @@ fun BlockingSessionScreen(pkgName: String) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         
-        // --- LOCKED OUT VIEW (PENALTY BOX) ---
+        // --- LOCKOUT SCREEN ---
         if (isLockedOut) {
-            // Live Countdown Logic
             var timeRemainingMs by remember { 
                 mutableStateOf(penaltyStatus.lockoutEndTime - System.currentTimeMillis()) 
             }
@@ -121,9 +108,7 @@ fun BlockingSessionScreen(pkgName: String) {
                     delay(1000)
                     val remaining = penaltyStatus.lockoutEndTime - System.currentTimeMillis()
                     timeRemainingMs = remaining
-                    
                     if (remaining <= 0) {
-                        // Time is up! Refresh state to unlock.
                         isLockedOut = false
                         penaltyStatus = PenaltyManager.getStatus(context, pkgName)
                     }
@@ -152,11 +137,10 @@ fun BlockingSessionScreen(pkgName: String) {
             return@Column 
         }
 
-        // --- NORMAL SELECTION VIEW ---
+        // --- SELECTION SCREEN ---
         Text(text = "✋", fontSize = 64.sp)
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Show WARNING if next session triggers penalty
         Text(
             text = if (penaltyStatus.isPenaltyNext) "WARNING" else "STRICT MODE",
             color = if (penaltyStatus.isPenaltyNext) Color(0xFFFF8800) else Color.Red,
@@ -185,9 +169,10 @@ fun BlockingSessionScreen(pkgName: String) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // DYNAMIC WARNING TEXT
         Text(
             text = if (penaltyStatus.isPenaltyNext) 
-                "Rapid re-entry detected.\nNext session triggers 2x Penalty." 
+                "Rapid re-entry detected.\nNext session triggers ${penaltyStatus.nextMultiplier}x Penalty." 
                 else "Breathe.\nWhy do you need to open this?",
             color = if (penaltyStatus.isPenaltyNext) Color(0xFFFF8800) else Color.White,
             textAlign = TextAlign.Center,
@@ -222,18 +207,19 @@ fun BlockingSessionScreen(pkgName: String) {
 
         val buttonAlpha by animateFloatAsState(if (canSelectSession) 1f else 0.3f)
 
+        // Using SECONDS for testing
         Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
-            SessionButton(context, pkgName, 10, canSelectSession, penaltyStatus.isPenaltyNext, Modifier.weight(1f))
+            SessionButton(context, pkgName, 10, canSelectSession, penaltyStatus, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
-            SessionButton(context, pkgName, 30, canSelectSession, penaltyStatus.isPenaltyNext, Modifier.weight(1f))
+            SessionButton(context, pkgName, 30, canSelectSession, penaltyStatus, Modifier.weight(1f))
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
-            SessionButton(context, pkgName, 60, canSelectSession, penaltyStatus.isPenaltyNext, Modifier.weight(1f))
+            SessionButton(context, pkgName, 60, canSelectSession, penaltyStatus, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
-            SessionButton(context, pkgName, 300, canSelectSession, penaltyStatus.isPenaltyNext, Modifier.weight(1f))
+            SessionButton(context, pkgName, 300, canSelectSession, penaltyStatus, Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(48.dp))
@@ -248,10 +234,12 @@ fun SessionButton(
     pkg: String, 
     seconds: Int, 
     enabled: Boolean,
-    isPenalty: Boolean,
+    status: PenaltyManager.Status,
     modifier: Modifier = Modifier
 ) {
     val activity = context as? BlockingActivity
+    val isPenalty = status.isPenaltyNext
+    val multiplier = status.nextMultiplier
     
     val btnColor = if (isPenalty && enabled) Color(0xFF440000) else if (enabled) Color(0xFF1E1E1E) else Color.Black
     val borderColor = if (isPenalty && enabled) Color.Red else if (enabled) Color.Gray else Color.DarkGray
@@ -260,7 +248,6 @@ fun SessionButton(
         onClick = {
             if (!enabled) return@Button
             
-            // This starts the session AND sets the lockout if strikes >= 3
             PenaltyManager.startSession(context, pkg, seconds)
             
             try {
@@ -289,7 +276,7 @@ fun SessionButton(
             )
             if (isPenalty && enabled) {
                 Text(
-                    text = "+${seconds * 2}s Lock",
+                    text = "+${seconds * multiplier}s Lock",
                     color = Color.Red,
                     fontSize = 10.sp
                 )
