@@ -44,7 +44,22 @@
           "line": 307
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/EditorScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 13402,
+          "line": 319
+        },
+        "start": {
+          "column": 1,
+          "index": 13402,
+          "line": 319
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/PenaltyManager.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/EditorScreen.kt"
 }
