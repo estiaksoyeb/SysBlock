@@ -48,9 +48,9 @@ fun BlockingSessionScreen(pkgName: String) {
     
     var progress by remember { mutableStateOf(0.0f) }
     var canSelectSession by remember { mutableStateOf(false) }
-    var usageStats by remember { mutableStateOf(Pair(0, 0)) }
+    var usageStats by remember { mutableStateOf(Pair(0, 0)) } // (Used, Limit)
     
-    // State initialization with defaults
+    // State initialization
     var isLockedOut by remember { mutableStateOf(false) }
     var penaltyStatus by remember { mutableStateOf(PenaltyManager.Status(0, false, 0L, 2)) }
 
@@ -60,7 +60,10 @@ fun BlockingSessionScreen(pkgName: String) {
                 isLockedOut = PenaltyManager.isLockedOut(context, pkgName)
                 penaltyStatus = PenaltyManager.getStatus(context, pkgName)
                 usageStats = getUsageInfo(context, pkgName)
-                if (!isLockedOut) {
+                
+                // Only reset progress if we are actually allowed to select
+                val isLimitReached = usageStats.second > 0 && usageStats.first >= usageStats.second
+                if (!isLockedOut && !isLimitReached) {
                     progress = 0f
                     canSelectSession = false
                 }
@@ -70,8 +73,11 @@ fun BlockingSessionScreen(pkgName: String) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(isLockedOut) {
-        if (!isLockedOut) {
+    // Check strict daily limit
+    val isLimitReached = usageStats.second > 0 && usageStats.first >= usageStats.second
+
+    LaunchedEffect(isLockedOut, isLimitReached) {
+        if (!isLockedOut && !isLimitReached) {
             val steps = 100
             for (i in 1..steps) {
                 delay(50)
@@ -97,7 +103,7 @@ fun BlockingSessionScreen(pkgName: String) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         
-        // --- LOCKOUT SCREEN ---
+        // --- 1. PENALTY LOCKOUT SCREEN (Highest Priority) ---
         if (isLockedOut) {
             var timeRemainingMs by remember { 
                 mutableStateOf(penaltyStatus.lockoutEndTime - System.currentTimeMillis()) 
@@ -137,7 +143,35 @@ fun BlockingSessionScreen(pkgName: String) {
             return@Column 
         }
 
-        // --- SELECTION SCREEN ---
+        // --- 2. DAILY LIMIT REACHED SCREEN (High Priority) ---
+        if (isLimitReached) {
+            Text("⛔", fontSize = 64.sp)
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("LIMIT REACHED", color = Color.Red, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "Used: ${usageStats.first}m / ${usageStats.second}m",
+                color = Color.Yellow,
+                fontSize = 20.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            Text(
+                text = "You have exhausted your\nallowance for today.",
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                fontSize = 18.sp
+            )
+            
+            Spacer(modifier = Modifier.height(48.dp))
+            Text("Swipe BACK to exit", color = Color.Gray)
+            return@Column
+        }
+
+        // --- 3. SESSION SELECTION SCREEN (Default) ---
         Text(text = "✋", fontSize = 64.sp)
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -207,7 +241,7 @@ fun BlockingSessionScreen(pkgName: String) {
 
         val buttonAlpha by animateFloatAsState(if (canSelectSession) 1f else 0.3f)
 
-        // Using SECONDS for testing
+        // Using SECONDS for testing (as requested)
         Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
             SessionButton(context, pkgName, 10, canSelectSession, penaltyStatus, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))

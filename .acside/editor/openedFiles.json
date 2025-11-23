@@ -1,32 +1,17 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/PenaltyManager.kt",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 4912,
-          "line": 128
-        },
-        "start": {
-          "column": 1,
-          "index": 4912,
-          "line": 128
-        }
-      }
-    },
-    {
       "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockerService.kt",
       "selection": {
         "end": {
-          "column": 1,
-          "index": 4244,
-          "line": 118
+          "column": 0,
+          "index": 5728,
+          "line": 150
         },
         "start": {
-          "column": 1,
-          "index": 4244,
-          "line": 118
+          "column": 0,
+          "index": 5728,
+          "line": 150
         }
       }
     },
@@ -35,13 +20,28 @@
       "selection": {
         "end": {
           "column": 1,
-          "index": 11684,
-          "line": 307
+          "index": 13205,
+          "line": 341
         },
         "start": {
           "column": 1,
-          "index": 11684,
-          "line": 307
+          "index": 13205,
+          "line": 341
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/FreezeManager.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 2689,
+          "line": 76
+        },
+        "start": {
+          "column": 1,
+          "index": 2689,
+          "line": 76
         }
       }
     },
@@ -50,16 +50,31 @@
       "selection": {
         "end": {
           "column": 1,
-          "index": 13402,
-          "line": 319
+          "index": 29996,
+          "line": 687
         },
         "start": {
           "column": 1,
-          "index": 13402,
-          "line": 319
+          "index": 29996,
+          "line": 687
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/HomeScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 15383,
+          "line": 363
+        },
+        "start": {
+          "column": 1,
+          "index": 15383,
+          "line": 363
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/EditorScreen.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockingActivity.kt"
 }

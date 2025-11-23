@@ -4,6 +4,7 @@ import android.app.AppOpsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Process
 import android.provider.Settings
 import android.text.TextUtils.SimpleStringSplitter
@@ -12,6 +13,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
@@ -33,17 +41,24 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
     val prefs = context.getSharedPreferences("SysBlockPrefs", Context.MODE_PRIVATE)
 
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
-    var isUsageEnabled by remember { mutableStateOf(false) } // NEW STATE
+    var isUsageEnabled by remember { mutableStateOf(false) } 
     var rawConfig by remember { mutableStateOf("") }
     var parsedConfig by remember { mutableStateOf(ConfigParser.SystemConfig()) }
+    
+    // Freeze State
+    var activeFrozenRanges by remember { mutableStateOf(emptyList<IntRange>()) }
+    
+    // UI State
+    var showHelpDialog by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 isAccessibilityEnabled = isAccessibilityServiceEnabled(context)
-                isUsageEnabled = isUsageAccessGranted(context) // NEW CHECK
+                isUsageEnabled = isUsageAccessGranted(context) 
                 rawConfig = prefs.getString("raw_config", ConfigParser.getDefaultConfig()) ?: ""
                 parsedConfig = ConfigParser.parse(rawConfig)
+                activeFrozenRanges = FreezeManager.getActiveFrozenRanges(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -64,6 +79,19 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
         rawConfig = newConfigText
         parsedConfig = ConfigParser.parse(newConfigText)
     }
+    
+    // --- CALCULATE IF MASTER SWITCH IS FROZEN ---
+    val masterSwitchLineIndex = remember(rawConfig) {
+        rawConfig.lines().indexOfFirst { it.trim().startsWith("SET | MASTER_SWITCH") }
+    }
+    
+    val isMasterSwitchFrozen = remember(masterSwitchLineIndex, activeFrozenRanges) {
+        if (masterSwitchLineIndex != -1) {
+            activeFrozenRanges.any { range -> masterSwitchLineIndex in range }
+        } else {
+            false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -71,14 +99,31 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
             .background(Color(0xFF121212))
             .padding(16.dp)
     ) {
-        Text(
-            text = "SYSBLOCK // HOME",
-            color = Color.Green,
-            fontSize = 24.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
+        // --- HEADER WITH HELP ICON ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "SYSBLOCK // HOME",
+                color = Color.Green,
+                fontSize = 24.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold
+            )
+            
+            IconButton(onClick = { showHelpDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Help",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
 
         // --- PERMISSIONS CARD ---
         Card(
@@ -105,7 +150,7 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 2. Usage Access Check (NEW)
+                // 2. Usage Access Check
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().clickable {
@@ -131,7 +176,14 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Master Switch", color = Color.White, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Master Switch", color = Color.White, fontWeight = FontWeight.Bold)
+                        if (isMasterSwitchFrozen) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.Lock, contentDescription = "Frozen", tint = Color.Cyan, modifier = Modifier.size(16.dp))
+                            Text(" FROZEN", color = Color.Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                     Text(
                         text = if (isAccessibilityEnabled && isUsageEnabled) "System Ready" else "Permissions Missing",
                         color = Color.Gray, 
@@ -141,7 +193,11 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                 Switch(
                     checked = parsedConfig.masterSwitch,
                     onCheckedChange = { toggleMasterSwitch(it) },
-                    enabled = isAccessibilityEnabled && isUsageEnabled
+                    enabled = isAccessibilityEnabled && isUsageEnabled && !isMasterSwitchFrozen,
+                    colors = SwitchDefaults.colors(
+                        disabledCheckedTrackColor = Color(0xFF004400),
+                        disabledCheckedThumbColor = Color.Gray
+                    )
                 )
             }
         }
@@ -150,19 +206,50 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
         
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(parsedConfig.rules) { rule ->
+                
+                // HELPER: Get Real App Name from Package Name
+                val appLabel = remember(rule.packageName) {
+                    try {
+                        val pm = context.packageManager
+                        val info = pm.getApplicationInfo(rule.packageName, 0)
+                        info.loadLabel(pm).toString()
+                    } catch (e: Exception) {
+                        // Fallback to package name if uninstalled/not found
+                        rule.packageName
+                    }
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .background(Color(0xFF1E1E1E))
                         .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(rule.packageName.takeLast(15), color = Color.White, fontFamily = FontFamily.Monospace)
+                    Column(modifier = Modifier.weight(1f)) {
+                        // Show Real Name
+                        Text(
+                            text = appLabel, 
+                            color = Color.White, 
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        // Show Package Name (Smaller)
+                        Text(
+                            text = rule.packageName, 
+                            color = Color.DarkGray, 
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    
                     Text(
-                        if (rule.limitMinutes > 0) "${rule.limitMinutes}m LIMIT" else "INSTANT BLOCK", 
+                        if (rule.limitMinutes > 0) "${rule.limitMinutes}m LIMIT" else "INSTANT", 
                         color = if (rule.strictMode) Color.Red else Color.Yellow,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -174,6 +261,78 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
         ) {
             Text("OPEN CONFIG EDITOR", color = Color.Green)
+        }
+    }
+
+    // --- HELP DIALOG ---
+    if (showHelpDialog) {
+        HelpDialog(onDismiss = { showHelpDialog = false })
+    }
+}
+
+@Composable
+fun HelpDialog(onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    "SYSTEM MANUAL", 
+                    color = Color.Green, 
+                    fontSize = 20.sp, 
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text("1. Configuration", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    "Rules are set in CONFIG.SYS using the format:\nPackage | Limit(m) | StrictMode",
+                    color = Color.Gray, fontSize = 14.sp
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text("2. Strict Mode", color = Color.Red, fontWeight = FontWeight.Bold)
+                Text(
+                    "If set to TRUE, the app will be blocked immediately when you exceed your daily minute limit.",
+                    color = Color.Gray, fontSize = 14.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text("3. The Penalty System", color = Color(0xFFFF8800), fontWeight = FontWeight.Bold)
+                Text(
+                    "To reduce phone addiction, SysBlock punishes rapid reopening of apps.",
+                    color = Color.Gray, fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("• Strikes:", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("Opening an app within 2 minutes of closing it adds a Strike.", color = Color.Gray, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("• Lockout:", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("Reaching 3 Strikes triggers a Penalty Lockout.", color = Color.Gray, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("• Multiplier:", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("Each lockout increases your Daily Level. Future penalties become longer (Level x Session Time).", color = Color.Gray, fontSize = 13.sp)
+
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
+                ) {
+                    Text("ACKNOWLEDGE")
+                }
+            }
         }
     }
 }
@@ -194,7 +353,6 @@ fun isAccessibilityServiceEnabled(context: Context): Boolean {
     return false
 }
 
-// NEW HELPER
 fun isUsageAccessGranted(context: Context): Boolean {
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
     val mode = appOps.checkOpNoThrow(
