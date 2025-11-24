@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -168,14 +169,13 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                     )
                 }
 
-                                if (parsedConfig.preventUninstall) {
+                if (parsedConfig.preventUninstall) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable {
                             if (!isAdminActive) {
                                 try {
-                                    // Use Hardcoded Strings to ensure package path is 100% correct
                                     val cn = ComponentName("com.self.sysblock", "com.self.sysblock.AdminReceiver")
                                     val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                                         putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn)
@@ -183,7 +183,6 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                                     }
                                     context.startActivity(intent)
                                 } catch (e: Exception) {
-                                    // THIS WILL TELL US THE ERROR
                                     android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                                     e.printStackTrace()
                                 }
@@ -240,6 +239,7 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
         
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(parsedConfig.rules) { rule ->
+                // Fetch App Name
                 val appLabel = remember(rule.packageName) {
                     try {
                         val pm = context.packageManager
@@ -254,26 +254,33 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
-                        .background(Color(0xFF1E1E1E))
+                        .background(Color(0xFF1E1E1E), RoundedCornerShape(8.dp))
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    
+                    // --- APP NAME & PACKAGE (Icon Removed) ---
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = appLabel, 
                             color = Color.White, 
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = rule.packageName, 
-                            color = Color.DarkGray, 
+                            color = Color.Gray, 
                             fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     
+                    // --- LIMIT STATUS ---
                     Text(
                         if (rule.limitMinutes > 0) "${rule.limitMinutes}m LIMIT" else "INSTANT", 
                         color = if (rule.strictMode) Color.Red else Color.Yellow,

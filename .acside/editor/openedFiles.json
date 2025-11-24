@@ -4,14 +4,14 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/AndroidManifest.xml",
       "selection": {
         "end": {
-          "column": 0,
-          "index": 2214,
-          "line": 59
+          "column": 6,
+          "index": 364,
+          "line": 7
         },
         "start": {
-          "column": 0,
-          "index": 2214,
-          "line": 59
+          "column": 6,
+          "index": 364,
+          "line": 7
         }
       }
     },
@@ -89,7 +89,22 @@
           "line": 702
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/HomeScreen.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 16562,
+          "line": 390
+        },
+        "start": {
+          "column": 0,
+          "index": 16562,
+          "line": 390
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/EditorScreen.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/AndroidManifest.xml"
 }
