@@ -1,80 +1,35 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockerService.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/AndroidManifest.xml",
       "selection": {
         "end": {
           "column": 0,
-          "index": 5728,
-          "line": 150
+          "index": 2214,
+          "line": 59
         },
         "start": {
           "column": 0,
-          "index": 5728,
-          "line": 150
+          "index": 2214,
+          "line": 59
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockingActivity.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/res/xml/device_admin.xml",
       "selection": {
         "end": {
-          "column": 1,
-          "index": 13205,
-          "line": 341
+          "column": 15,
+          "index": 216,
+          "line": 6
         },
         "start": {
-          "column": 1,
-          "index": 13205,
-          "line": 341
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/FreezeManager.kt",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 2689,
-          "line": 76
-        },
-        "start": {
-          "column": 1,
-          "index": 2689,
-          "line": 76
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/EditorScreen.kt",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 29996,
-          "line": 687
-        },
-        "start": {
-          "column": 1,
-          "index": 29996,
-          "line": 687
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/HomeScreen.kt",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 15383,
-          "line": 363
-        },
-        "start": {
-          "column": 1,
-          "index": 15383,
-          "line": 363
+          "column": 15,
+          "index": 216,
+          "line": 6
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockingActivity.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/res/xml/device_admin.xml"
 }

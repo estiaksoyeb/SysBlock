@@ -254,7 +254,7 @@ fun EditorScreen(onBack: () -> Unit) {
     }
 }
 
-// --- SETTINGS POPUP UI (GAP FILLER) ---
+// --- SETTINGS POPUP UI ---
 @Composable
 fun FreezeSettingsDialog(
     context: Context,
@@ -287,22 +287,14 @@ fun FreezeSettingsDialog(
     val isSequenceValid = endTotalMins > startTotalMins
 
     // --- SMART GAP DETECTION ---
-    // 1. Get all rules that have the exact same time schedule
     val sameTimeRules = rules.filter { 
         it.startHour == startH && it.startMinute == startM && 
         it.endHour == endH && it.endMinute == endM 
     }
 
-    // 2. Calculate the set of lines specifically requested by user
     val requestedLines = if (isLineValid) (startLine..endLine).toSet() else emptySet()
-
-    // 3. Calculate the set of lines ALREADY covered by same-time rules
     val coveredLines = sameTimeRules.flatMap { (it.startLine..it.endLine).toList() }.toSet()
-
-    // 4. Determine which lines are NEW (The Gap)
     val linesToAdd = requestedLines.subtract(coveredLines)
-    
-    // 5. If linesToAdd is empty, it means the request is fully redundant
     val isFullyCovered = requestedLines.isNotEmpty() && linesToAdd.isEmpty()
 
     val canAdd = isTimeValid && isLineValid && isSequenceValid && !isFullyCovered
@@ -380,11 +372,9 @@ fun FreezeSettingsDialog(
                 // Line Input
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
-                        // Dynamic Helper Text
                         val helperText = when {
                             isFullyCovered -> "Already Covered (Redundant)"
                             !isLineValid -> "Invalid Lines (Max: $currentLineCount)"
-                            // Show the user what will actually happen
                             linesToAdd.size < requestedLines.size -> "Adding Gap: ${linesToAdd.size} lines"
                             else -> "Lines (Start - End)"
                         }
@@ -401,11 +391,9 @@ fun FreezeSettingsDialog(
                         }
                     }
                     
-                    // SMART ADD BUTTON
                     IconButton(
                         onClick = {
                             if (canAdd) {
-                                // ALGORITHM: Convert the fragmented linesToAdd set into clean ranges
                                 val sortedLines = linesToAdd.sorted()
                                 val ranges = mutableListOf<IntRange>()
                                 
@@ -425,7 +413,6 @@ fun FreezeSettingsDialog(
                                     ranges.add(rangeStart..rangeEnd)
                                 }
 
-                                // Add a separate rule for each calculated gap
                                 val newRulesList = rules.toMutableList()
                                 for (range in ranges) {
                                     val rule = FreezeManager.FreezeRule(
@@ -472,7 +459,6 @@ fun FreezeSettingsDialog(
     }
 }
 
-// ... [Rest of the file remains strictly identical: Helper functions, Validators, Highlighter]
 fun isRuleActiveNow(rule: FreezeManager.FreezeRule): Boolean {
     val now = Calendar.getInstance()
     val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
@@ -573,6 +559,7 @@ fun TimeInput(value: String, onValueChange: (String) -> Unit) {
 
 data class ValidationResult(val errorLine: Int = -1, val errorMessage: String = "", val summary: String = "")
 
+// --- MODIFIED VALIDATOR ---
 fun validateConfig(text: String): ValidationResult {
     val lines = text.lines()
     var ruleCount = 0
@@ -584,6 +571,12 @@ fun validateConfig(text: String): ValidationResult {
         val trimmed = line.trim()
         val lineNum = index + 1
         if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEachIndexed
+
+        // THE FIX: Explicitly allow PREVENT_UNINSTALL
+        if (trimmed == "PREVENT_UNINSTALL") {
+             summaryBuilder.append("• Uninstall Protection Active\n")
+             return@forEachIndexed
+        }
 
         val parts = trimmed.split("|").map { it.trim() }
         if (parts.size < 3) return ValidationResult(lineNum, "Format Error. Incomplete rule.")
@@ -617,6 +610,7 @@ fun validateConfig(text: String): ValidationResult {
     return ValidationResult(summary = "Rules: $ruleCount\nStrict: $strictCount\n\n$summaryBuilder")
 }
 
+// --- MODIFIED HIGHLIGHTER ---
 object StrictSyntaxHighlighter : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val raw = text.text
@@ -641,25 +635,34 @@ object StrictSyntaxHighlighter : VisualTransformation {
                 var isError = false
                 
                 if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
-                    val parts = trimmed.split("|")
-                    if (parts.size >= 3) {
-                        val col1 = parts[0].trim()
-                        val col2 = parts[1].trim()
-                        val col3 = parts[2].trim()
-                        if (col1 == "SET") {
-                            if (!col3.equals("true", true) && !col3.equals("false", true)) isError = true
+                    
+                    // HIGHLIGHTING FIX FOR PREVENT_UNINSTALL
+                    if (trimmed == "PREVENT_UNINSTALL") {
+                        addStyle(SpanStyle(color = Color.Magenta, fontWeight = FontWeight.Bold), lineStart, lineEnd)
+                    } else {
+                        val parts = trimmed.split("|")
+                        if (parts.size >= 3) {
+                            val col1 = parts[0].trim()
+                            val col2 = parts[1].trim()
+                            val col3 = parts[2].trim()
+                            if (col1 == "SET") {
+                                if (!col3.equals("true", true) && !col3.equals("false", true)) isError = true
+                            } else {
+                                val isNum = col2.toIntOrNull() != null
+                                val isBool = col3.equals("true", true) || col3.equals("false", true)
+                                val isDuplicate = packageCounts.getOrDefault(col1, 0) > 1
+                                if (!isNum || !isBool || isDuplicate) isError = true
+                            }
                         } else {
-                            val isNum = col2.toIntOrNull() != null
-                            val isBool = col3.equals("true", true) || col3.equals("false", true)
-                            val isDuplicate = packageCounts.getOrDefault(col1, 0) > 1
-                            if (!isNum || !isBool || isDuplicate) isError = true
+                            // Only mark as error if it is NOT the special keyword we just handled above
+                            isError = true
                         }
                     }
                 }
 
                 if (isError) {
                     addStyle(SpanStyle(color = Color(0xFFFF5555)), lineStart, lineEnd)
-                } else {
+                } else if (trimmed != "PREVENT_UNINSTALL") { // Don't overwrite our special color
                     if (trimmed.startsWith("#")) {
                         addStyle(SpanStyle(color = Color.Gray), lineStart, lineEnd)
                     } else {

@@ -10,14 +10,17 @@ object ConfigParser {
         val strictMode: Boolean
     )
 
+    // THIS IS THE FIX: Added 'preventUninstall' to the data class
     data class SystemConfig(
         val rules: List<AppRule> = emptyList(),
-        val masterSwitch: Boolean = true
+        val masterSwitch: Boolean = true,
+        val preventUninstall: Boolean = false 
     )
 
     fun parse(rawText: String): SystemConfig {
         val rules = mutableListOf<AppRule>()
         var masterSwitch = true
+        var preventUninstall = false // Default is false
 
         val lines = rawText.lines()
 
@@ -26,6 +29,12 @@ object ConfigParser {
             if (trimmed.isEmpty() || trimmed.startsWith("#")) continue
 
             try {
+                // Check for the new keyword
+                if (trimmed == "PREVENT_UNINSTALL") {
+                    preventUninstall = true
+                    continue
+                }
+
                 val parts = trimmed.split("|").map { it.trim() }
 
                 if (parts[0] == "SET") {
@@ -45,17 +54,19 @@ object ConfigParser {
                 Log.e("SysBlock", "Parser Error: $trimmed")
             }
         }
-        return SystemConfig(rules, masterSwitch)
+        // Return the config with the new value
+        return SystemConfig(rules, masterSwitch, preventUninstall)
     }
 
     fun getDefaultConfig(): String {
         return """
             # SysBlock Config
-            # Format: Package | 0 | StrictMode
+            # Add line below to lock uninstall:
+            # PREVENT_UNINSTALL
             
             SET | MASTER_SWITCH | true
             
-            # Example (Uncomment to test):
+            # Example:
             # com.android.chrome | 0 | true
         """.trimIndent()
     }

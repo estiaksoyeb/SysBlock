@@ -25,11 +25,10 @@ class BlockerService : AccessibilityService() {
 
             // 1. Check if Session Expired
             // 2. Check if Penalty Lockout started
-            // 3. Check if Daily Limit is reached (Feature from File 1 added here)
+            // 3. Check if Daily Limit is reached
             val isSessionValid = isSessionActive(pkg)
             val isLockedOut = PenaltyManager.isLockedOut(applicationContext, pkg)
             
-            // Calculate usage dynamically while app is running
             val currentUsage = getDailyUsage(pkg)
             val isOverLimit = rule != null && currentUsage >= rule.limitMinutes
 
@@ -74,25 +73,55 @@ class BlockerService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkgName = event.packageName?.toString() ?: return
+            
+            // --- SECURITY WATCHDOG ---
+            val config = cachedConfig
+            if (config != null && config.preventUninstall && config.masterSwitch) {
+                if (pkgName == "com.android.settings") {
+                    val className = event.className?.toString() ?: ""
+                    val eventText = event.text.toString()
+                    
+                    var shouldBlock = false
+
+                    // 1. Block Accessibility Settings
+                    if (className.contains("Accessibility", ignoreCase = true)) {
+                        shouldBlock = true
+                    }
+                    
+                    // 2. Block Device Admin Settings
+                    if (className.contains("DeviceAdmin", ignoreCase = true)) {
+                        shouldBlock = true
+                    }
+
+                    // 3. Block SysBlock's App Info (Prevents Force Stop / Uninstall)
+                    if ((className.contains("InstalledAppDetails", ignoreCase = true) || 
+                         className.contains("AppDetails", ignoreCase = true)) &&
+                        (eventText.contains("SysBlock", ignoreCase = true) || 
+                         eventText.contains("com.self.sysblock", ignoreCase = true))) {
+                        shouldBlock = true
+                    }
+
+                    if (shouldBlock) {
+                        performGlobalAction(GLOBAL_ACTION_HOME)
+                        return 
+                    }
+                }
+            }
+            // ------------------------------------------
 
             stopMonitoring()
 
             if (IGNORED_PACKAGES.contains(pkgName)) return
-            val config = cachedConfig ?: return
-            if (!config.masterSwitch) return
+            if (config == null || !config.masterSwitch) return
 
             val rule = config.rules.find { it.packageName == pkgName } ?: return
 
             if (rule.strictMode) {
-                // 1. CHECK LOCKOUT FIRST (The Penalty Box)
                 if (PenaltyManager.isLockedOut(this, pkgName)) {
                     launchBlockScreen(pkgName)
                     return
                 }
 
-                // 2. CHECK ACTIVE SESSION (Feature from File 2)
-                // If session is active -> Allow & Monitor
-                // If session NOT active -> Block Immediately (Gatekeeper)
                 if (isSessionActive(pkgName)) {
                     currentMonitoredPackage = pkgName
                     handler.post(sessionCheckerRunnable)
@@ -103,7 +132,6 @@ class BlockerService : AccessibilityService() {
         }
     }
 
-    // HELPER: Calculates usage for today (From File 1)
     private fun getDailyUsage(pkgName: String): Int {
         val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val calendar = Calendar.getInstance()

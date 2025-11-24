@@ -1,6 +1,7 @@
 package com.self.sysblock
 
 import android.app.AppOpsManager
+import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -41,21 +42,29 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
     val prefs = context.getSharedPreferences("SysBlockPrefs", Context.MODE_PRIVATE)
 
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
-    var isUsageEnabled by remember { mutableStateOf(false) } 
+    var isUsageEnabled by remember { mutableStateOf(false) }
+    var isAdminActive by remember { mutableStateOf(false) }
+    
     var rawConfig by remember { mutableStateOf("") }
     var parsedConfig by remember { mutableStateOf(ConfigParser.SystemConfig()) }
     
     // Freeze State
     var activeFrozenRanges by remember { mutableStateOf(emptyList<IntRange>()) }
     
-    // UI State
     var showHelpDialog by remember { mutableStateOf(false) }
+
+    fun checkAdminStatus(): Boolean {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val componentName = ComponentName(context, AdminReceiver::class.java)
+        return dpm.isAdminActive(componentName)
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 isAccessibilityEnabled = isAccessibilityServiceEnabled(context)
                 isUsageEnabled = isUsageAccessGranted(context) 
+                isAdminActive = checkAdminStatus()
                 rawConfig = prefs.getString("raw_config", ConfigParser.getDefaultConfig()) ?: ""
                 parsedConfig = ConfigParser.parse(rawConfig)
                 activeFrozenRanges = FreezeManager.getActiveFrozenRanges(context)
@@ -80,7 +89,6 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
         parsedConfig = ConfigParser.parse(newConfigText)
     }
     
-    // --- CALCULATE IF MASTER SWITCH IS FROZEN ---
     val masterSwitchLineIndex = remember(rawConfig) {
         rawConfig.lines().indexOfFirst { it.trim().startsWith("SET | MASTER_SWITCH") }
     }
@@ -99,7 +107,6 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
             .background(Color(0xFF121212))
             .padding(16.dp)
     ) {
-        // --- HEADER WITH HELP ICON ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -125,7 +132,6 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
             }
         }
 
-        // --- PERMISSIONS CARD ---
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
@@ -134,7 +140,6 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                 Text("System Permissions", color = Color.Gray, fontSize = 12.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // 1. Accessibility Check
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().clickable {
@@ -150,7 +155,6 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 2. Usage Access Check
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().clickable {
@@ -163,10 +167,40 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     )
                 }
+
+                                if (parsedConfig.preventUninstall) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            if (!isAdminActive) {
+                                try {
+                                    // Use Hardcoded Strings to ensure package path is 100% correct
+                                    val cn = ComponentName("com.self.sysblock", "com.self.sysblock.AdminReceiver")
+                                    val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                                        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn)
+                                        putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Protects SysBlock from being removed.")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    // THIS WILL TELL US THE ERROR
+                                    android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = if (isAdminActive) "✅ Uninstall Protection Active" else "❌ Enable Uninstall Protection",
+                            color = if (isAdminActive) Color.Green else Color.Red,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
             }
         }
 
-        // --- MASTER CONTROL ---
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
@@ -206,15 +240,12 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
         
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(parsedConfig.rules) { rule ->
-                
-                // HELPER: Get Real App Name from Package Name
                 val appLabel = remember(rule.packageName) {
                     try {
                         val pm = context.packageManager
                         val info = pm.getApplicationInfo(rule.packageName, 0)
                         info.loadLabel(pm).toString()
                     } catch (e: Exception) {
-                        // Fallback to package name if uninstalled/not found
                         rule.packageName
                     }
                 }
@@ -229,14 +260,12 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        // Show Real Name
                         Text(
                             text = appLabel, 
                             color = Color.White, 
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
-                        // Show Package Name (Smaller)
                         Text(
                             text = rule.packageName, 
                             color = Color.DarkGray, 
@@ -264,7 +293,6 @@ fun HomeScreen(onNavigateToEditor: () -> Unit) {
         }
     }
 
-    // --- HELP DIALOG ---
     if (showHelpDialog) {
         HelpDialog(onDismiss = { showHelpDialog = false })
     }
@@ -294,7 +322,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                 
                 Text("1. Configuration", color = Color.White, fontWeight = FontWeight.Bold)
                 Text(
-                    "Rules are set in CONFIG.SYS using the format:\nPackage | Limit(m) | StrictMode",
+                    "Rules are set in CONFIG.SYS using the format:\nPackage | Limit(m) | StrictMode\n\nTo Prevent Uninstall, add line:\nPREVENT_UNINSTALL",
                     color = Color.Gray, fontSize = 14.sp
                 )
                 
@@ -313,16 +341,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                     "To reduce phone addiction, SysBlock punishes rapid reopening of apps.",
                     color = Color.Gray, fontSize = 14.sp
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Strikes:", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("Opening an app within 2 minutes of closing it adds a Strike.", color = Color.Gray, fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Lockout:", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("Reaching 3 Strikes triggers a Penalty Lockout.", color = Color.Gray, fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Multiplier:", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("Each lockout increases your Daily Level. Future penalties become longer (Level x Session Time).", color = Color.Gray, fontSize = 13.sp)
-
+                
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Button(
