@@ -1,4 +1,4 @@
-package com.self.sysblock
+package com.self.sysblock.features.penalty
 
 import android.content.Context
 import java.util.Calendar
@@ -60,8 +60,6 @@ object PenaltyManager {
     }
 
     fun isLockedOut(context: Context, pkg: String): Boolean {
-        // Day reset isn't strictly needed here as timestamps fix themselves, 
-        // but good for consistency.
         checkDayReset(context, pkg) 
         
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -103,9 +101,6 @@ object PenaltyManager {
 
         // --- PENALTY LOGIC ---
         if (strikes >= 3) {
-            // FORMULA: Duration * (Level + 1)
-            // Level 1: 10s * 2 = 20s
-            // Level 2: 10s * 3 = 30s
             val multiplier = penaltyLevel + 1
             val penaltyDuration = durationMs * multiplier
             
@@ -113,7 +108,6 @@ object PenaltyManager {
             editor.putLong("${pkg}_lockout_end", newLockoutEnd)
             
             // INCREASE DIFFICULTY FOR NEXT TIME
-            // "20+original... then 40s"
             penaltyLevel++
             editor.putInt("${pkg}_daily_penalty_level", penaltyLevel)
             

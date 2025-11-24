@@ -1,4 +1,4 @@
-package com.self.sysblock
+package com.self.sysblock.receivers
 
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context

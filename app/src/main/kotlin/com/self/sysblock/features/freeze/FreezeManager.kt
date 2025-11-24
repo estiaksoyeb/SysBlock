@@ -1,4 +1,4 @@
-package com.self.sysblock
+package com.self.sysblock.features.freeze
 
 import android.content.Context
 import com.google.gson.Gson
@@ -16,8 +16,8 @@ object FreezeManager {
         val startMinute: Int,
         val endHour: Int,
         val endMinute: Int,
-        val startLine: Int, // 1-based
-        val endLine: Int,   // 1-based
+        val startLine: Int,
+        val endLine: Int,
         val isEnabled: Boolean = true
     )
 
@@ -40,14 +40,9 @@ object FreezeManager {
             .apply()
     }
 
-    // --- LOGIC INVERSION: WHITELIST MODE ---
-    // Returns lines that are FROZEN (because they are managed but NOT in an allowed window)
     fun getActiveFrozenRanges(context: Context): List<IntRange> {
         val rules = getRules(context)
-        
-        // 1. Identify all lines that have a rule attached (Managed)
         val managedIndices = mutableSetOf<Int>()
-        // 2. Identify all lines that are currently in an allowed time window
         val allowedIndices = mutableSetOf<Int>()
         
         val now = Calendar.getInstance()
@@ -56,17 +51,13 @@ object FreezeManager {
         for (rule in rules) {
             if (!rule.isEnabled) continue
 
-            // Convert 1-based user input to 0-based index
             val s = (rule.startLine - 1).coerceAtLeast(0)
             val e = (rule.endLine - 1).coerceAtLeast(0)
             if (e < s) continue
             
             val range = s..e
-
-            // Mark these lines as "Protected/Managed"
             range.forEach { managedIndices.add(it) }
 
-            // Check if we are in the "Allowed Edit Time"
             val startMinutes = rule.startHour * 60 + rule.startMinute
             val endMinutes = rule.endHour * 60 + rule.endMinute
             
@@ -76,16 +67,12 @@ object FreezeManager {
                 currentMinutes >= startMinutes || currentMinutes < endMinutes
             }
 
-            // If time is allowed, mark these lines as authorized
             if (isNowAllowed) {
                 range.forEach { allowedIndices.add(it) }
             }
         }
 
-        // 3. Logic: If a line is Managed, it is Frozen UNLESS it is Allowed.
         val frozenIndices = managedIndices - allowedIndices
-
-        // Convert indices back to Ranges for the Editor to consume
         val sortedFrozen = frozenIndices.toList().sorted()
         val activeRanges = mutableListOf<IntRange>()
         

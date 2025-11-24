@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions"/>
-     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
     <application
@@ -14,8 +14,9 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.SysBlock">
 
+        <!-- FIX: Updated path to .ui.main.MainActivity -->
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,16 +24,18 @@
             </intent-filter>
         </activity>
 
+        <!-- FIX: Updated path to .ui.blocking.BlockingActivity -->
         <activity
-            android:name=".BlockingActivity"
+            android:name=".ui.blocking.BlockingActivity"
             android:exported="false"
             android:launchMode="singleTop" 
             android:theme="@style/Theme.SysBlock"
             android:noHistory="true">
         </activity>
 
+        <!-- FIX: Updated path to .service.BlockerService -->
         <service
-            android:name=".BlockerService"
+            android:name=".service.BlockerService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">
             <intent-filter>
@@ -43,8 +46,9 @@
                 android:resource="@xml/accessibility_config" />
         </service>
 
+        <!-- FIX: Updated path to .receivers.AdminReceiver -->
         <receiver
-            android:name="com.self.sysblock.AdminReceiver"
+            android:name=".receivers.AdminReceiver"
             android:label="@string/app_name"
             android:description="@string/app_name"
             android:permission="android.permission.BIND_DEVICE_ADMIN"

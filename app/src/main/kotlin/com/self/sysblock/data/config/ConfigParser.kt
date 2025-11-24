@@ -1,21 +1,8 @@
-package com.self.sysblock
+package com.self.sysblock.data.config
 
 import android.util.Log
 
 object ConfigParser {
-
-    data class AppRule(
-        val packageName: String,
-        val limitMinutes: Int, 
-        val strictMode: Boolean
-    )
-
-    // THIS IS THE FIX: Added 'preventUninstall' to the data class
-    data class SystemConfig(
-        val rules: List<AppRule> = emptyList(),
-        val masterSwitch: Boolean = true,
-        val preventUninstall: Boolean = false 
-    )
 
     fun parse(rawText: String): SystemConfig {
         val rules = mutableListOf<AppRule>()
@@ -31,7 +18,8 @@ object ConfigParser {
             try {
                 // Check for the new keyword
                 if (trimmed == "PREVENT_UNINSTALL") {
-                    //preventUninstall = true //comment this line to regain controll
+                    // SAFETY HATCH: Commented out to regain control
+                    // preventUninstall = true 
                     continue
                 }
 
