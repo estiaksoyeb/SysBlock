@@ -44,7 +44,22 @@
           "line": 185
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockingActivity.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 13443,
+          "line": 346
+        },
+        "start": {
+          "column": 0,
+          "index": 13443,
+          "line": 346
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockerService.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockingActivity.kt"
 }

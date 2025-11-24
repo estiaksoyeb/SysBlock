@@ -241,19 +241,19 @@ fun BlockingSessionScreen(pkgName: String) {
 
         val buttonAlpha by animateFloatAsState(if (canSelectSession) 1f else 0.3f)
 
-        // Using SECONDS for testing (as requested)
+        // CHANGED TO MINUTES (Values are in Seconds: 300=5m, 600=10m, 1200=20m, 1800=30m)
         Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
-            SessionButton(context, pkgName, 10, canSelectSession, penaltyStatus, Modifier.weight(1f))
+            SessionButton(context, pkgName, 300, canSelectSession, penaltyStatus, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
-            SessionButton(context, pkgName, 30, canSelectSession, penaltyStatus, Modifier.weight(1f))
+            SessionButton(context, pkgName, 600, canSelectSession, penaltyStatus, Modifier.weight(1f))
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
-            SessionButton(context, pkgName, 60, canSelectSession, penaltyStatus, Modifier.weight(1f))
+            SessionButton(context, pkgName, 1200, canSelectSession, penaltyStatus, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
-            SessionButton(context, pkgName, 300, canSelectSession, penaltyStatus, Modifier.weight(1f))
+            SessionButton(context, pkgName, 1800, canSelectSession, penaltyStatus, Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(48.dp))
@@ -278,6 +278,9 @@ fun SessionButton(
     val btnColor = if (isPenalty && enabled) Color(0xFF440000) else if (enabled) Color(0xFF1E1E1E) else Color.Black
     val borderColor = if (isPenalty && enabled) Color.Red else if (enabled) Color.Gray else Color.DarkGray
 
+    // Convert to minutes for display
+    val minutes = seconds / 60
+    
     Button(
         onClick = {
             if (!enabled) return@Button
@@ -304,13 +307,14 @@ fun SessionButton(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "${seconds}s",
+                text = "${minutes}m", // Changed from 's' to 'm'
                 color = if (enabled) Color.White else Color.Gray,
                 fontSize = 18.sp
             )
             if (isPenalty && enabled) {
+                val penaltyMinutes = (seconds * multiplier) / 60
                 Text(
-                    text = "+${seconds * multiplier}s Lock",
+                    text = "+${penaltyMinutes}m Lock", // Changed logic to show Minutes
                     color = Color.Red,
                     fontSize = 10.sp
                 )
