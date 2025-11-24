@@ -23,9 +23,6 @@ class BlockerService : AccessibilityService() {
             val config = cachedConfig ?: return
             val rule = config.rules.find { it.packageName == pkg }
 
-            // 1. Check if Session Expired
-            // 2. Check if Penalty Lockout started
-            // 3. Check if Daily Limit is reached
             val isSessionValid = isSessionActive(pkg)
             val isLockedOut = PenaltyManager.isLockedOut(applicationContext, pkg)
             
@@ -38,7 +35,6 @@ class BlockerService : AccessibilityService() {
                 return
             }
             
-            // Re-run check every 1 second
             handler.postDelayed(this, 1000)
         }
     }
@@ -74,30 +70,41 @@ class BlockerService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkgName = event.packageName?.toString() ?: return
             
-            // --- SECURITY WATCHDOG ---
+            // --- SECURITY WATCHDOG (UPDATED) ---
             val config = cachedConfig
             if (config != null && config.preventUninstall && config.masterSwitch) {
                 if (pkgName == "com.android.settings") {
                     val className = event.className?.toString() ?: ""
-                    val eventText = event.text.toString()
+                    // event.text is a list; toString() usually looks like "[Accessibility]"
+                    val eventText = event.text.toString() 
                     
                     var shouldBlock = false
 
-                    // 1. Block Accessibility Settings
-                    if (className.contains("Accessibility", ignoreCase = true)) {
+                    // 1. Block Accessibility (Matches Class OR Title)
+                    if (className.contains("Accessibility", ignoreCase = true) || 
+                        eventText.contains("Accessibility", ignoreCase = true)) {
                         shouldBlock = true
                     }
                     
-                    // 2. Block Device Admin Settings
-                    if (className.contains("DeviceAdmin", ignoreCase = true)) {
+                    // 2. Block Device Admin
+                    if (className.contains("DeviceAdmin", ignoreCase = true) || 
+                        eventText.contains("Device Admin", ignoreCase = true)) {
                         shouldBlock = true
                     }
 
-                    // 3. Block SysBlock's App Info (Prevents Force Stop / Uninstall)
-                    if ((className.contains("InstalledAppDetails", ignoreCase = true) || 
-                         className.contains("AppDetails", ignoreCase = true)) &&
-                        (eventText.contains("SysBlock", ignoreCase = true) || 
-                         eventText.contains("com.self.sysblock", ignoreCase = true))) {
+                    // 3. Block Usage Access (NEW)
+                    // Matches "Usage Access", "Special app access", "Usage data access" (Samsung)
+                    if (className.contains("UsageAccess", ignoreCase = true) ||
+                        eventText.contains("Usage Access", ignoreCase = true) ||
+                        eventText.contains("Usage Data", ignoreCase = true)) {
+                         shouldBlock = true
+                    }
+
+                    // 4. THE CATCH-ALL: Block "SysBlock" inside Settings
+                    // This blocks: App Info, SysBlock Accessibility Page, SysBlock Usage Page
+                    // regardless of how you got there.
+                    if (eventText.contains("SysBlock", ignoreCase = true) || 
+                        eventText.contains("com.self.sysblock", ignoreCase = true)) {
                         shouldBlock = true
                     }
 

@@ -29,7 +29,22 @@
           "line": 6
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockerService.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 7384,
+          "line": 185
+        },
+        "start": {
+          "column": 0,
+          "index": 7384,
+          "line": 185
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/res/xml/device_admin.xml"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockerService.kt"
 }
