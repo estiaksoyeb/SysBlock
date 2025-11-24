@@ -10,7 +10,6 @@ object ConfigValidator {
     fun validate(text: String): ValidationResult {
         val lines = text.lines()
         var ruleCount = 0
-        var strictCount = 0
         val summaryBuilder = StringBuilder()
         val seenPackages = mutableSetOf<String>()
 
@@ -25,34 +24,82 @@ object ConfigValidator {
             }
 
             val parts = trimmed.split("|").map { it.trim() }
-            if (parts.size < 3) return ValidationResult(lineNum, "Format Error. Incomplete rule.")
+            
+            if (parts.size < 2) return ValidationResult(lineNum, "Invalid Format.")
 
             if (parts[0] == "SET") {
-                val key = parts[1]
-                val value = parts[2]
-                if (key == "MASTER_SWITCH" && value.lowercase() !in listOf("true", "false")) {
-                    return ValidationResult(lineNum, "Master switch must be true or false.")
+                val key = parts.getOrNull(1) ?: ""
+                when (key) {
+                    "MASTER_SWITCH" -> {
+                        if (parts.size < 3 || parts[2].lowercase() !in listOf("true", "false")) {
+                            return ValidationResult(lineNum, "Master switch must be true or false.")
+                        }
+                    }
+                    "SESSION_TIME" -> {
+                        if (parts.size < 3) return ValidationResult(lineNum, "Session times missing.")
+                    }
+                    "APPLOCK" -> {
+                        // Format: SET | APPLOCK | pkg | time
+                        if (parts.size < 4) return ValidationResult(lineNum, "AppLock needs: Package | Time")
+                        
+                        val pkg = parts[2]
+                        val timeStr = parts[3]
+                        
+                        if (seenPackages.contains(pkg)) {
+                            return ValidationResult(lineNum, "Duplicate rule for '$pkg'.")
+                        }
+                        seenPackages.add(pkg)
+                        
+                        if (timeStr.isEmpty()) return ValidationResult(lineNum, "Time cannot be empty.")
+                        
+                        // SAFETY CHECK: Minimum 5 Minutes
+                        val minutes = parseDuration(timeStr)
+                        if (minutes < 5) {
+                            return ValidationResult(lineNum, "Safety: Time must be at least 5m.")
+                        }
+                        
+                        ruleCount++
+                        summaryBuilder.append("• ${pkg.takeLast(15)} [$timeStr]\n")
+                    }
+                    else -> return ValidationResult(lineNum, "Unknown Command: '$key'")
                 }
             } else {
-                val pkg = parts[0]
-                val time = parts[1].toIntOrNull()
-                val strict = parts[2].lowercase()
-                
-                if (seenPackages.contains(pkg)) {
-                    return ValidationResult(lineNum, "Duplicate rule for '$pkg'.")
+                // Legacy Format Check
+                if (parts.size >= 3) {
+                    val pkg = parts[0]
+                    if (seenPackages.contains(pkg)) return ValidationResult(lineNum, "Duplicate rule for '$pkg'.")
+                    seenPackages.add(pkg)
+                    ruleCount++
+                    summaryBuilder.append("• ${pkg.takeLast(15)} (Legacy)\n")
                 }
-                seenPackages.add(pkg)
-                
-                if (time == null) return ValidationResult(lineNum, "Time limit must be a number.")
-                if (strict != "true" && strict != "false") return ValidationResult(lineNum, "Strict mode must be 'true' or 'false'.")
-                
-                ruleCount++
-                if (parts[2].toBoolean()) strictCount++
-                
-                val extra = if (parts.size > 3) " + Extended" else ""
-                summaryBuilder.append("• ${pkg.takeLast(15)} ($time m)$extra\n")
             }
         }
-        return ValidationResult(summary = "Rules: $ruleCount\nStrict: $strictCount\n\n$summaryBuilder")
+        return ValidationResult(summary = "Active Rules: $ruleCount\n\n$summaryBuilder")
+    }
+
+    // Helper to parse "1h", "30m", "90" into minutes (Duplicated from Parser for independence)
+    private fun parseDuration(input: String): Int {
+        input.toIntOrNull()?.let { return it }
+
+        var totalMinutes = 0
+        var currentNumber = ""
+        
+        for (char in input.lowercase()) {
+            if (char.isDigit()) {
+                currentNumber += char
+            } else if (char == 'h') {
+                totalMinutes += (currentNumber.toIntOrNull() ?: 0) * 60
+                currentNumber = ""
+            } else if (char == 'm') {
+                totalMinutes += (currentNumber.toIntOrNull() ?: 0)
+                currentNumber = ""
+            }
+        }
+        
+        if (currentNumber.isNotEmpty()) {
+            totalMinutes += currentNumber.toIntOrNull() ?: 0
+        }
+        
+        return totalMinutes
     }
 }

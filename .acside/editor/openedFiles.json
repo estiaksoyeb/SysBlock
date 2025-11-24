@@ -35,13 +35,13 @@
       "selection": {
         "end": {
           "column": 1,
-          "index": 4934,
-          "line": 125
+          "index": 4362,
+          "line": 113
         },
         "start": {
           "column": 1,
-          "index": 4934,
-          "line": 125
+          "index": 4362,
+          "line": 113
         }
       }
     },
@@ -49,17 +49,107 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/ui/blocking/BlockingSessionScreen.kt",
       "selection": {
         "end": {
-          "column": 46,
-          "index": 8670,
-          "line": 226
+          "column": 1,
+          "index": 10551,
+          "line": 265
         },
         "start": {
-          "column": 46,
-          "index": 8670,
-          "line": 226
+          "column": 1,
+          "index": 10551,
+          "line": 265
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/data/config/ConfigModels.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 429,
+          "line": 14
+        },
+        "start": {
+          "column": 1,
+          "index": 429,
+          "line": 14
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/data/config/ConfigParser.kt",
+      "selection": {
+        "end": {
+          "column": 28,
+          "index": 690,
+          "line": 22
+        },
+        "start": {
+          "column": 28,
+          "index": 690,
+          "line": 22
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/ui/editor/ConfigValidator.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 4197,
+          "line": 104
+        },
+        "start": {
+          "column": 1,
+          "index": 4197,
+          "line": 104
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/ui/editor/SyntaxHighlighter.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 7075,
+          "line": 129
+        },
+        "start": {
+          "column": 1,
+          "index": 7075,
+          "line": 129
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/ui/editor/EditorScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 10615,
+          "line": 251
+        },
+        "start": {
+          "column": 1,
+          "index": 10615,
+          "line": 251
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/features/watchdog/SecurityWatchdog.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 2935,
+          "line": 73
+        },
+        "start": {
+          "column": 1,
+          "index": 2935,
+          "line": 73
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/features/overlay/OverlayController.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/features/watchdog/SecurityWatchdog.kt"
 }

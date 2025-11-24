@@ -4,24 +4,35 @@ import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.self.sysblock.data.config.ConfigParser
 import com.self.sysblock.features.freeze.FreezeManager
 import com.self.sysblock.features.validation.ConfigValidator
@@ -33,6 +44,9 @@ fun EditorScreen(onBack: () -> Unit) {
     
     val originalText = remember { prefs.getString("raw_config", ConfigParser.getDefaultConfig()) ?: "" }
     var codeText by remember { mutableStateOf(originalText) }
+    
+    // Font Size State (Default 14.sp)
+    var editorFontSize by remember { mutableStateOf(14.sp) }
     
     var activeRanges by remember { mutableStateOf(FreezeManager.getActiveFrozenRanges(context)) }
     val isFreezeActive = activeRanges.isNotEmpty()
@@ -53,6 +67,14 @@ fun EditorScreen(onBack: () -> Unit) {
         }
     }
 
+    // Helper to safely zoom
+    fun zoomEditor(zoomIn: Boolean) {
+        val currentVal = editorFontSize.value
+        val newVal = if (zoomIn) currentVal + 2f else currentVal - 2f
+        // Limit between 10sp and 32sp
+        editorFontSize = newVal.coerceIn(10f, 32f).sp
+    }
+
     BackHandler {
         if (isModified) showUnsavedDialog = true else onBack()
     }
@@ -62,7 +84,7 @@ fun EditorScreen(onBack: () -> Unit) {
             .fillMaxSize()
             .background(Color(0xFF121212)) 
     ) {
-        // Header
+        // --- HEADER ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -71,17 +93,24 @@ fun EditorScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column {
                 Text("CONFIG.SYS", color = Color.Green, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                if (isModified) Text("*", color = Color.Yellow, modifier = Modifier.padding(start = 4.dp))
-                
                 if (isFreezeActive) {
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text("🔒 FROZEN", color = Color.Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
             
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isModified) Text("*", color = Color.Yellow, modifier = Modifier.padding(end = 8.dp))
+
+                // ZOOM BUTTONS
+                IconButton(onClick = { zoomEditor(false) }) {
+                    Text("A-", color = Color.LightGray, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+                IconButton(onClick = { zoomEditor(true) }) {
+                    Text("A+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+
                 IconButton(onClick = { showFreezeSettings = true }) {
                     Text("⚙️", fontSize = 20.sp)
                 }
@@ -93,7 +122,7 @@ fun EditorScreen(onBack: () -> Unit) {
 
         HorizontalDivider(color = Color(0xFF333333))
 
-        // Editor Content
+        // --- EDITOR AREA ---
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -103,21 +132,21 @@ fun EditorScreen(onBack: () -> Unit) {
         ) {
             val lineCount = codeText.lines().size
             
-            // Line Numbers
+            // 1. Line Numbers (Dynamic Size)
             Text(
                 text = (1..lineCount).joinToString("\n"),
                 color = Color.Gray,
-                fontSize = 14.sp,
+                fontSize = editorFontSize,
                 fontFamily = FontFamily.Monospace,
-                lineHeight = 20.sp, 
+                lineHeight = editorFontSize * 1.5, // Maintain aspect ratio
                 textAlign = TextAlign.End,
                 modifier = Modifier
-                    .width(40.dp)
+                    .width(40.dp) // Fixed width might need adjustment for massive fonts, but mostly safe
                     .padding(top = 8.dp, end = 8.dp)
                     .background(Color(0xFF252525))
             )
 
-            // Code Input
+            // 2. Code Input (Dynamic Size)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -148,8 +177,8 @@ fun EditorScreen(onBack: () -> Unit) {
                     textStyle = TextStyle(
                         color = Color.LightGray,
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp 
+                        fontSize = editorFontSize,
+                        lineHeight = editorFontSize * 1.5 // Keep synced with Line Numbers
                     ),
                     cursorBrush = SolidColor(Color.Green),
                     visualTransformation = StrictSyntaxHighlighter, 
@@ -159,7 +188,7 @@ fun EditorScreen(onBack: () -> Unit) {
         }
     }
 
-    // Dialogs
+    // --- DIALOGS ---
     if (showFreezeSettings) {
         FreezeSettingsDialog(
             context = context,

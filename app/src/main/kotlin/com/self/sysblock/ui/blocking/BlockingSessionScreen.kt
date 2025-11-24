@@ -1,11 +1,14 @@
 package com.self.sysblock.ui.blocking
 
+import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -23,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.self.sysblock.data.config.ConfigParser
 import com.self.sysblock.features.penalty.PenaltyManager
 import kotlinx.coroutines.delay
 
@@ -33,9 +37,9 @@ fun BlockingSessionScreen(pkgName: String) {
     
     var progress by remember { mutableFloatStateOf(0.0f) }
     var canSelectSession by remember { mutableStateOf(false) }
-    var usageStats by remember { mutableStateOf(Pair(0, 0)) } // (Used, Limit)
+    var usageStats by remember { mutableStateOf(Pair(0, 0)) }
+    var sessionOptions by remember { mutableStateOf(listOf(300, 600, 1200, 1800)) } // Default
     
-    // State initialization
     var isLockedOut by remember { mutableStateOf(false) }
     var penaltyStatus by remember { mutableStateOf(PenaltyManager.Status(0, false, 0L, 2)) }
 
@@ -45,6 +49,14 @@ fun BlockingSessionScreen(pkgName: String) {
                 isLockedOut = PenaltyManager.isLockedOut(context, pkgName)
                 penaltyStatus = PenaltyManager.getStatus(context, pkgName)
                 usageStats = getUsageInfo(context, pkgName)
+                
+                // Load Dynamic Config
+                val prefs = context.getSharedPreferences("SysBlockPrefs", Context.MODE_PRIVATE)
+                val rawConfig = prefs.getString("raw_config", ConfigParser.getDefaultConfig()) ?: ""
+                val config = ConfigParser.parse(rawConfig)
+                if (config.sessionTimes.isNotEmpty()) {
+                    sessionOptions = config.sessionTimes
+                }
                 
                 val isLimitReached = usageStats.second > 0 && usageStats.first >= usageStats.second
                 if (!isLockedOut && !isLimitReached) {
@@ -81,12 +93,12 @@ fun BlockingSessionScreen(pkgName: String) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(24.dp),
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()), // Added scroll for safety with many buttons
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         
-        // --- 1. PENALTY LOCKOUT SCREEN ---
         if (isLockedOut) {
             var timeRemainingMs by remember { 
                 mutableLongStateOf(penaltyStatus.lockoutEndTime - System.currentTimeMillis()) 
@@ -126,13 +138,11 @@ fun BlockingSessionScreen(pkgName: String) {
             return@Column 
         }
 
-        // --- 2. DAILY LIMIT REACHED SCREEN ---
         if (isLimitReached) {
             Text("⛔", fontSize = 64.sp)
             Spacer(modifier = Modifier.height(24.dp))
             Text("LIMIT REACHED", color = Color.Red, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
-            
             Text(
                 text = "Used: ${usageStats.first}m / ${usageStats.second}m",
                 color = Color.Yellow,
@@ -140,7 +150,6 @@ fun BlockingSessionScreen(pkgName: String) {
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold
             )
-            
             Spacer(modifier = Modifier.height(32.dp))
             Text(
                 text = "You have exhausted your\nallowance for today.",
@@ -148,13 +157,11 @@ fun BlockingSessionScreen(pkgName: String) {
                 textAlign = TextAlign.Center,
                 fontSize = 18.sp
             )
-            
             Spacer(modifier = Modifier.height(48.dp))
             Text("Swipe BACK to exit", color = Color.Gray)
             return@Column
         }
 
-        // --- 3. SESSION SELECTION SCREEN ---
         Text(text = "✋", fontSize = 64.sp)
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -223,21 +230,36 @@ fun BlockingSessionScreen(pkgName: String) {
 
         val buttonAlpha by animateFloatAsState(if (canSelectSession) 1f else 0.3f, label = "alpha")
 
-        Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
-            SessionButton(context, pkgName, 15, canSelectSession, penaltyStatus, Modifier.weight(1f))
-            Spacer(modifier = Modifier.width(16.dp))
-            SessionButton(context, pkgName, 600, canSelectSession, penaltyStatus, Modifier.weight(1f))
-        }
+        // --- DYNAMIC GRID GENERATION ---
+        // Chunks the options into rows of 2 items each
+        val rows = sessionOptions.chunked(2)
         
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
-            SessionButton(context, pkgName, 1200, canSelectSession, penaltyStatus, Modifier.weight(1f))
-            Spacer(modifier = Modifier.width(16.dp))
-            SessionButton(context, pkgName, 1800, canSelectSession, penaltyStatus, Modifier.weight(1f))
+        rows.forEach { rowItems ->
+            Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
+                rowItems.forEachIndexed { index, seconds ->
+                    SessionButton(
+                        context = context, 
+                        pkg = pkgName, 
+                        seconds = seconds, 
+                        enabled = canSelectSession, 
+                        status = penaltyStatus, 
+                        modifier = Modifier.weight(1f)
+                    )
+                    // Add spacer between buttons
+                    if (index == 0 && rowItems.size > 1) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                    }
+                }
+                // If row has only 1 item, add an invisible spacer to keep the button left-aligned/sized correctly
+                if (rowItems.size == 1) {
+                     Spacer(modifier = Modifier.width(16.dp))
+                     Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Text(text = "Or swipe BACK to give up", color = Color.DarkGray, fontSize = 14.sp)
     }
