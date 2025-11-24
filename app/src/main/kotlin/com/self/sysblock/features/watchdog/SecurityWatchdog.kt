@@ -29,13 +29,13 @@ object SecurityWatchdog {
             // --- 1. HARD BLOCK: USAGE ACCESS ---
             // Blocks entry to the Usage Access list entirely.
             // TO DISABLE: Comment out the if-block below.
-            if (eventText.contains("usage access") || className.contains("usageaccess")) {
+            if (eventText.contains("usage access")) {
                 shouldBlock = true
             }
 
             // --- 2. HARD BLOCK: DEVICE ADMIN ---
             // Prevents entering Device Admin menu to stop rapid-click bypass.
-            if (className.contains("deviceadmin")) {
+            if (eventText.contains("device admin") || className.contains("deviceadmin")) {
                 shouldBlock = true
             }
 

@@ -79,14 +79,14 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/data/config/ConfigParser.kt",
       "selection": {
         "end": {
-          "column": 28,
-          "index": 690,
-          "line": 22
+          "column": 12,
+          "index": 4550,
+          "line": 121
         },
         "start": {
-          "column": 28,
-          "index": 690,
-          "line": 22
+          "column": 12,
+          "index": 4550,
+          "line": 121
         }
       }
     },
@@ -139,17 +139,17 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/features/watchdog/SecurityWatchdog.kt",
       "selection": {
         "end": {
-          "column": 1,
-          "index": 2935,
-          "line": 73
+          "column": 36,
+          "index": 1199,
+          "line": 31
         },
         "start": {
-          "column": 1,
-          "index": 2935,
-          "line": 73
+          "column": 36,
+          "index": 1199,
+          "line": 31
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/features/watchdog/SecurityWatchdog.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/data/config/ConfigParser.kt"
 }

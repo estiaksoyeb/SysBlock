@@ -106,7 +106,8 @@ object ConfigParser {
         return """
             # SysBlock Config
             # Add line below to lock uninstall:
-            # PREVENT_UNINSTALL #Only enable if you can't controll yourself
+            # Only enable if you can't controll yourself.
+            # PREVENT_UNINSTALL 
             
             SET | MASTER_SWITCH | true
             
@@ -116,6 +117,16 @@ object ConfigParser {
             # App Rules (Time: 0 = Instant Block, 30m = 30 Minutes)
             # SET | APPLOCK | com.facebook.katana | 45m
             # SET | APPLOCK | com.instagram.android | 20m
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
         """.trimIndent()
     }
 }
