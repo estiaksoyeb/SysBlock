@@ -71,11 +71,11 @@ class BlockerService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkgName = event.packageName?.toString() ?: return
             
-            // --- SECURITY WATCHDOG (FINAL COMBINED LOGIC) ---
+            // --- SECURITY WATCHDOG (WHITE-LIST APPROACH) ---
             val config = cachedConfig
             
             if (config != null && config.preventUninstall && config.masterSwitch) {
-                // We monitor Settings, Package Installer, and Permission Controller
+                
                 if (pkgName == "com.android.settings" || 
                     pkgName.contains("packageinstaller") || 
                     pkgName.contains("permissioncontroller")) {
@@ -85,26 +85,30 @@ class BlockerService : AccessibilityService() {
                     
                     var shouldBlock = false
 
-                    // 1. HARD BLOCK: Usage Access & Device Admin
-                    // We block these entirely because you requested they be hard to access.
+                    // 1. HARD BLOCK: Usage Access
                     if (eventText.contains("usage access") || 
-                        eventText.contains("usage data") || 
-                        className.contains("usageaccess") ||
-                        eventText.contains("device admin") || 
-                        className.contains("deviceadmin")) {
+                        className.contains("usageaccess")) {
                         shouldBlock = true
                     }
 
-                    // 2. SMART BLOCK: Accessibility & App Info
-                    // We DO NOT block generic "Accessibility" here.
-                    // We ONLY block if the screen mentions "SysBlock".
-                    // This covers: 
-                    // - Clicking "SysBlock" in Accessibility List
-                    // - Opening "App Info" for SysBlock
-                    // - Uninstall Dialog for SysBlock
-                    if (eventText.contains("sysblock") || 
-                        eventText.contains("com.self.sysblock")) {
-                        shouldBlock = true
+                    // 2. SMART BLOCK: Accessibility & Device Admin
+                    if (eventText.contains("sysblock") || eventText.contains("com.self.sysblock")) {
+                        
+                        var isSafe = false
+
+                        // EXCEPTION A: The Accessibility List
+                        if (className.contains("accessibilitysettings")) {
+                            isSafe = true
+                        }
+
+                        // EXCEPTION B: The Device Admin List
+                        if (className.contains("deviceadminsettings")) {
+                            isSafe = true
+                        }
+
+                        if (!isSafe) {
+                            shouldBlock = true
+                        }
                     }
 
                     if (shouldBlock) {
@@ -139,17 +143,23 @@ class BlockerService : AccessibilityService() {
         }
     }
 
+    // --- ACCURATE USAGE CALCULATION ---
     private fun getDailyUsage(pkgName: String): Int {
         val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        
+        val now = System.currentTimeMillis()
         val calendar = Calendar.getInstance()
-        val endTime = calendar.timeInMillis
+        calendar.timeInMillis = now
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
-        val usage = stats?.find { it.packageName == pkgName }
+        // Fix: Use queryAndAggregateUsageStats to ensure strict daily limits
+        val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, now)
+        val usage = statsMap[pkgName]
+        
         return ((usage?.totalTimeInForeground ?: 0) / 1000 / 60).toInt()
     }
 

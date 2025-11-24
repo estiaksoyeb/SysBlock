@@ -31,7 +31,7 @@ object ConfigParser {
             try {
                 // Check for the new keyword
                 if (trimmed == "PREVENT_UNINSTALL") {
-                    preventUninstall = true
+                    //preventUninstall = true //comment this line to regain controll
                     continue
                 }
 

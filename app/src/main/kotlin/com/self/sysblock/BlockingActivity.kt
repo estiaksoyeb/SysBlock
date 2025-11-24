@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
+import java.util.Calendar
 
 class BlockingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -241,7 +242,7 @@ fun BlockingSessionScreen(pkgName: String) {
 
         val buttonAlpha by animateFloatAsState(if (canSelectSession) 1f else 0.3f)
 
-        // CHANGED TO MINUTES (Values are in Seconds: 300=5m, 600=10m, 1200=20m, 1800=30m)
+        // Buttons in Minutes (300s = 5m, 600s = 10m, etc.)
         Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
             SessionButton(context, pkgName, 300, canSelectSession, penaltyStatus, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
@@ -278,7 +279,6 @@ fun SessionButton(
     val btnColor = if (isPenalty && enabled) Color(0xFF440000) else if (enabled) Color(0xFF1E1E1E) else Color.Black
     val borderColor = if (isPenalty && enabled) Color.Red else if (enabled) Color.Gray else Color.DarkGray
 
-    // Convert to minutes for display
     val minutes = seconds / 60
     
     Button(
@@ -307,14 +307,14 @@ fun SessionButton(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "${minutes}m", // Changed from 's' to 'm'
+                text = "${minutes}m", 
                 color = if (enabled) Color.White else Color.Gray,
                 fontSize = 18.sp
             )
             if (isPenalty && enabled) {
                 val penaltyMinutes = (seconds * multiplier) / 60
                 Text(
-                    text = "+${penaltyMinutes}m Lock", // Changed logic to show Minutes
+                    text = "+${penaltyMinutes}m Lock",
                     color = Color.Red,
                     fontSize = 10.sp
                 )
@@ -323,6 +323,7 @@ fun SessionButton(
     }
 }
 
+// --- UPDATED USAGE STATS LOGIC ---
 fun getUsageInfo(context: Context, pkgName: String): Pair<Int, Int> {
     val prefs = context.getSharedPreferences("SysBlockPrefs", Context.MODE_PRIVATE)
     val rawConfig = prefs.getString("raw_config", ConfigParser.getDefaultConfig()) ?: ""
@@ -331,15 +332,20 @@ fun getUsageInfo(context: Context, pkgName: String): Pair<Int, Int> {
     val limit = rule?.limitMinutes ?: 0
 
     val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
-    val calendar = java.util.Calendar.getInstance()
-    val endTime = calendar.timeInMillis
-    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    calendar.set(java.util.Calendar.MINUTE, 0)
-    calendar.set(java.util.Calendar.SECOND, 0)
+    
+    // Accurate Daily Time Calculation
+    val now = System.currentTimeMillis()
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = now
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0) // Precision Fix
     val startTime = calendar.timeInMillis
 
-    val stats = usageStatsManager.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
-    val usage = stats?.find { it.packageName == pkgName }
+    // Use AGGREGATE instead of queryUsageStats to prevent "Wrong Bucket" errors
+    val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, now)
+    val usage = statsMap[pkgName]
     val used = (usage?.totalTimeInForeground ?: 0) / 1000 / 60
 
     return Pair(used.toInt(), limit)
