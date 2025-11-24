@@ -8,6 +8,7 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
+import android.widget.Toast
 import java.util.Calendar
 
 class BlockerService : AccessibilityService() {
@@ -70,46 +71,45 @@ class BlockerService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkgName = event.packageName?.toString() ?: return
             
-            // --- SECURITY WATCHDOG (UPDATED) ---
+            // --- SECURITY WATCHDOG (FINAL COMBINED LOGIC) ---
             val config = cachedConfig
+            
             if (config != null && config.preventUninstall && config.masterSwitch) {
-                if (pkgName == "com.android.settings") {
-                    val className = event.className?.toString() ?: ""
-                    // event.text is a list; toString() usually looks like "[Accessibility]"
-                    val eventText = event.text.toString() 
+                // We monitor Settings, Package Installer, and Permission Controller
+                if (pkgName == "com.android.settings" || 
+                    pkgName.contains("packageinstaller") || 
+                    pkgName.contains("permissioncontroller")) {
+                    
+                    val eventText = event.text.toString().lowercase()
+                    val className = event.className?.toString()?.lowercase() ?: ""
                     
                     var shouldBlock = false
 
-                    // 1. Block Accessibility (Matches Class OR Title)
-                    if (className.contains("Accessibility", ignoreCase = true) || 
-                        eventText.contains("Accessibility", ignoreCase = true)) {
-                        shouldBlock = true
-                    }
-                    
-                    // 2. Block Device Admin
-                    if (className.contains("DeviceAdmin", ignoreCase = true) || 
-                        eventText.contains("Device Admin", ignoreCase = true)) {
+                    // 1. HARD BLOCK: Usage Access & Device Admin
+                    // We block these entirely because you requested they be hard to access.
+                    if (eventText.contains("usage access") || 
+                        eventText.contains("usage data") || 
+                        className.contains("usageaccess") ||
+                        eventText.contains("device admin") || 
+                        className.contains("deviceadmin")) {
                         shouldBlock = true
                     }
 
-                    // 3. Block Usage Access (NEW)
-                    // Matches "Usage Access", "Special app access", "Usage data access" (Samsung)
-                    if (className.contains("UsageAccess", ignoreCase = true) ||
-                        eventText.contains("Usage Access", ignoreCase = true) ||
-                        eventText.contains("Usage Data", ignoreCase = true)) {
-                         shouldBlock = true
-                    }
-
-                    // 4. THE CATCH-ALL: Block "SysBlock" inside Settings
-                    // This blocks: App Info, SysBlock Accessibility Page, SysBlock Usage Page
-                    // regardless of how you got there.
-                    if (eventText.contains("SysBlock", ignoreCase = true) || 
-                        eventText.contains("com.self.sysblock", ignoreCase = true)) {
+                    // 2. SMART BLOCK: Accessibility & App Info
+                    // We DO NOT block generic "Accessibility" here.
+                    // We ONLY block if the screen mentions "SysBlock".
+                    // This covers: 
+                    // - Clicking "SysBlock" in Accessibility List
+                    // - Opening "App Info" for SysBlock
+                    // - Uninstall Dialog for SysBlock
+                    if (eventText.contains("sysblock") || 
+                        eventText.contains("com.self.sysblock")) {
                         shouldBlock = true
                     }
 
                     if (shouldBlock) {
                         performGlobalAction(GLOBAL_ACTION_HOME)
+                        Toast.makeText(applicationContext, "Disable PREVENT_UNINSTALL first", Toast.LENGTH_SHORT).show()
                         return 
                     }
                 }
