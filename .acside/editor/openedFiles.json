@@ -59,7 +59,37 @@
           "line": 346
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/FreezeManager.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 3943,
+          "line": 110
+        },
+        "start": {
+          "column": 0,
+          "index": 3943,
+          "line": 110
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/EditorScreen.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 30622,
+          "line": 702
+        },
+        "start": {
+          "column": 0,
+          "index": 30622,
+          "line": 702
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/BlockingActivity.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/EditorScreen.kt"
 }

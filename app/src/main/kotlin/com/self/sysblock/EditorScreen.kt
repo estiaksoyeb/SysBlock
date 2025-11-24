@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -286,18 +287,16 @@ fun FreezeSettingsDialog(
     val endTotalMins = endH * 60 + endM
     val isSequenceValid = endTotalMins > startTotalMins
 
-    // --- SMART GAP DETECTION ---
-    val sameTimeRules = rules.filter { 
-        it.startHour == startH && it.startMinute == startM && 
-        it.endHour == endH && it.endMinute == endM 
-    }
-
+    // --- CONFLICT DETECTION (STRICT) ---
+    // We check against ALL existing rules. A line can only be managed by ONE rule.
+    val allManagedLines = rules.flatMap { (it.startLine..it.endLine).toList() }.toSet()
+    
     val requestedLines = if (isLineValid) (startLine..endLine).toSet() else emptySet()
-    val coveredLines = sameTimeRules.flatMap { (it.startLine..it.endLine).toList() }.toSet()
-    val linesToAdd = requestedLines.subtract(coveredLines)
-    val isFullyCovered = requestedLines.isNotEmpty() && linesToAdd.isEmpty()
+    
+    val conflictingLines = requestedLines.intersect(allManagedLines)
+    val hasConflict = conflictingLines.isNotEmpty()
 
-    val canAdd = isTimeValid && isLineValid && isSequenceValid && !isFullyCovered
+    val canAdd = isTimeValid && isLineValid && isSequenceValid && !hasConflict
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -307,7 +306,7 @@ fun FreezeSettingsDialog(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "FREEZE PROTOCOLS", 
+                    "EDIT SCHEDULES", 
                     color = Color.Green, 
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
@@ -315,7 +314,7 @@ fun FreezeSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text("Active Rules:", color = Color.Gray, fontSize = 12.sp)
+                Text("Active Windows:", color = Color.Gray, fontSize = 12.sp)
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -345,14 +344,14 @@ fun FreezeSettingsDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // --- ADD NEW RULE SECTION ---
-                Text("New Schedule:", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("New Allowed Window:", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Time Input
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            if (!isSequenceValid && isTimeValid) "End time must be after Start" else "Time Range (00:00 - 23:59)", 
+                            if (!isSequenceValid && isTimeValid) "End time must be after Start" else "Allowed Time (00:00 - 23:59)", 
                             color = if (!isSequenceValid && isTimeValid) Color.Red else Color.Gray, 
                             fontSize = 10.sp
                         )
@@ -373,15 +372,14 @@ fun FreezeSettingsDialog(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
                         val helperText = when {
-                            isFullyCovered -> "Already Covered (Redundant)"
+                            hasConflict -> "Lines already managed by another rule"
                             !isLineValid -> "Invalid Lines (Max: $currentLineCount)"
-                            linesToAdd.size < requestedLines.size -> "Adding Gap: ${linesToAdd.size} lines"
                             else -> "Lines (Start - End)"
                         }
                         
                         Text(
                             helperText, 
-                            color = if (!isLineValid || isFullyCovered) Color.Red else if (linesToAdd.size < requestedLines.size) Color.Yellow else Color.Gray, 
+                            color = if (!isLineValid || hasConflict) Color.Red else Color.Gray, 
                             fontSize = 10.sp
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -394,7 +392,7 @@ fun FreezeSettingsDialog(
                     IconButton(
                         onClick = {
                             if (canAdd) {
-                                val sortedLines = linesToAdd.sorted()
+                                val sortedLines = requestedLines.sorted()
                                 val ranges = mutableListOf<IntRange>()
                                 
                                 if (sortedLines.isNotEmpty()) {
@@ -482,10 +480,10 @@ fun RuleItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isActiveNow) Color(0xFF151515) else Color(0xFF252525), RoundedCornerShape(8.dp))
+            .background(if (isActiveNow) Color(0xFF0F1F0F) else Color(0xFF151515), RoundedCornerShape(8.dp)) // Dark Green if Active
             .border(
                 1.dp, 
-                if (isActiveNow && rule.isEnabled) Color(0xFF004400) else Color.Transparent, 
+                if (isActiveNow && rule.isEnabled) Color.Green else Color.Transparent, 
                 RoundedCornerShape(8.dp)
             )
             .padding(8.dp),
@@ -499,40 +497,53 @@ fun RuleItem(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
-                if (isActiveNow && rule.isEnabled) {
+                if (rule.isEnabled) {
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("ACTIVE", color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Icon(
-                        imageVector = Icons.Default.Lock, 
-                        contentDescription = "Locked",
-                        tint = Color.Green,
-                        modifier = Modifier.size(12.dp).padding(start = 2.dp)
-                    )
+                    if (isActiveNow) {
+                        Text("UNLOCKED", color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Icon(
+                            imageVector = Icons.Default.Check, 
+                            contentDescription = "Editable",
+                            tint = Color.Green,
+                            modifier = Modifier.size(12.dp).padding(start = 2.dp)
+                        )
+                    } else {
+                         Text("LOCKED", color = Color.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                         Icon(
+                            imageVector = Icons.Default.Lock, 
+                            contentDescription = "Locked",
+                            tint = Color.Red,
+                            modifier = Modifier.size(12.dp).padding(start = 2.dp)
+                        )
+                    }
                 }
             }
             Text(
                 text = "Lines ${rule.startLine} - ${rule.endLine}",
-                color = if (isActiveNow && rule.isEnabled) Color(0xFF008800) else Color.Cyan,
+                color = if (isActiveNow && rule.isEnabled) Color.Green else Color.Gray,
                 fontSize = 12.sp,
                 fontFamily = FontFamily.Monospace
             )
         }
         
+        // --- LOCK ENFORCEMENT ---
+        // You cannot Toggle OR Delete a schedule if it is currently locked.
+        
         Switch(
             checked = rule.isEnabled,
             onCheckedChange = { onToggle() },
-            enabled = !isActiveNow, 
+            enabled = isActiveNow, // ONLY ENABLED IF UNLOCKED
             modifier = Modifier.scale(0.8f)
         )
         
         IconButton(
             onClick = onDelete,
-            enabled = !isActiveNow || !rule.isEnabled
+            enabled = isActiveNow // ONLY ENABLED IF UNLOCKED
         ) {
             Icon(
                 Icons.Default.Delete, 
                 contentDescription = "Delete", 
-                tint = if (isActiveNow && rule.isEnabled) Color.DarkGray else Color.Red, 
+                tint = if (isActiveNow) Color.Red else Color.DarkGray, // Gray out if locked
                 modifier = Modifier.size(20.dp)
             )
         }
