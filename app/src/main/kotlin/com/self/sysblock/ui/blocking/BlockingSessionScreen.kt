@@ -224,7 +224,7 @@ fun BlockingSessionScreen(pkgName: String) {
         val buttonAlpha by animateFloatAsState(if (canSelectSession) 1f else 0.3f, label = "alpha")
 
         Row(modifier = Modifier.fillMaxWidth().alpha(buttonAlpha)) {
-            SessionButton(context, pkgName, 10, canSelectSession, penaltyStatus, Modifier.weight(1f))
+            SessionButton(context, pkgName, 15, canSelectSession, penaltyStatus, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
             SessionButton(context, pkgName, 600, canSelectSession, penaltyStatus, Modifier.weight(1f))
         }

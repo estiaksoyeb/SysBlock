@@ -15,27 +15,36 @@ class BlockerService : AccessibilityService() {
 
     private var cachedConfig: SystemConfig? = null
     private lateinit var sessionManager: SessionManager
+    
+    // Track current package to avoid redundant calls
+    private var lastPkgName: String? = null
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
         if (key == "raw_config") updateConfigCache(sharedPreferences)
     }
 
-    private val IGNORED_PACKAGES = setOf(
+    // IGNORE LIST: These packages should NOT trigger a "Stop Monitoring" event
+    // If we are in Facebook and the Keyboard opens, we are STILL in Facebook.
+    private val SYSTEM_PACKAGES = setOf(
         "com.android.systemui",
         "android",
-        "com.google.android.inputmethod.latin",
-        "com.self.sysblock",
+        "com.google.android.inputmethod.latin", // Gboard
+        "com.samsung.android.honeyboard",      // Samsung Keyboard
+        "com.self.sysblock"                    // Our own app
+    )
+
+    private val LAUNCHER_PACKAGES = setOf(
         "com.android.launcher",
         "com.google.android.apps.nexuslauncher",
         "com.miui.home",
-        "com.sec.android.app.launcher"
+        "com.sec.android.app.launcher",
+        "com.huawei.android.launcher"
     )
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         
         OverlayController.init(this)
-        
         sessionManager = SessionManager(this.applicationContext) { cachedConfig }
 
         val prefs = getSharedPreferences("SysBlockPrefs", Context.MODE_PRIVATE)
@@ -51,7 +60,12 @@ class BlockerService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkgName = event.packageName?.toString() ?: return
+            
+            // Optimization: Don't re-process if we are still in the same package
+            if (pkgName == lastPkgName) return
+            lastPkgName = pkgName
 
+            // --- 1. SECURITY WATCHDOG ---
             val config = cachedConfig
             if (config != null) {
                 if (SecurityWatchdog.checkAndBlock(this, event, config)) {
@@ -59,9 +73,21 @@ class BlockerService : AccessibilityService() {
                 }
             }
 
-            sessionManager.stopMonitoring()
+            // --- 2. CONTEXT SWITCH LOGIC ---
+            
+            // If we switched to a SYSTEM package (Keyboard, Notification Shade), 
+            // DO NOT stop monitoring the previous app. We assume the previous app is still active underneath.
+            if (SYSTEM_PACKAGES.contains(pkgName)) {
+                return 
+            }
 
-            if (IGNORED_PACKAGES.contains(pkgName)) return
+            // If we switched to a Launcher or any other app, STOP monitoring the previous one.
+            // This ensures the overlay disappears when you go Home.
+            if (LAUNCHER_PACKAGES.contains(pkgName) || (config?.rules?.none { it.packageName == pkgName } == true)) {
+                sessionManager.stopMonitoring()
+            }
+
+            // --- 3. APP BLOCKING LOGIC ---
             if (config == null || !config.masterSwitch) return
 
             val rule = config.rules.find { it.packageName == pkgName } ?: return
@@ -73,8 +99,10 @@ class BlockerService : AccessibilityService() {
                 }
 
                 if (isSessionActive(pkgName)) {
+                    // We are in a tracked app -> Start/Resume Loop
                     sessionManager.startMonitoring(pkgName)
                 } else {
+                    // Time expired or never started -> Block
                     sessionManager.launchBlockScreen(pkgName)
                 }
             }
