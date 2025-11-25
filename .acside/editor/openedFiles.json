@@ -1,50 +1,20 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/AndroidManifest.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/ui/blocking/BlockingSessionScreen.kt",
       "selection": {
         "end": {
-          "column": 0,
-          "index": 485,
-          "line": 9
+          "column": 1,
+          "index": 11400,
+          "line": 284
         },
         "start": {
-          "column": 0,
-          "index": 485,
-          "line": 9
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/service/BlockerService.kt",
-      "selection": {
-        "end": {
-          "column": 0,
-          "index": 5254,
-          "line": 133
-        },
-        "start": {
-          "column": 0,
-          "index": 5254,
-          "line": 133
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/features/blocking/SessionManager.kt",
-      "selection": {
-        "end": {
-          "column": 0,
-          "index": 3741,
-          "line": 98
-        },
-        "start": {
-          "column": 0,
-          "index": 3741,
-          "line": 98
+          "column": 1,
+          "index": 11400,
+          "line": 284
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/service/BlockerService.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/SysBlock/app/src/main/kotlin/com/self/sysblock/ui/blocking/BlockingSessionScreen.kt"
 }

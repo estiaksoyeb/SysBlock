@@ -54,9 +54,31 @@ fun BlockingSessionScreen(pkgName: String) {
                 val prefs = context.getSharedPreferences("SysBlockPrefs", Context.MODE_PRIVATE)
                 val rawConfig = prefs.getString("raw_config", ConfigParser.getDefaultConfig()) ?: ""
                 val config = ConfigParser.parse(rawConfig)
-                if (config.sessionTimes.isNotEmpty()) {
-                    sessionOptions = config.sessionTimes
+                
+                // --- SMART UI LOGIC START ---
+                // 1. Get raw options from config or default
+                val rawOptions = if (config.sessionTimes.isNotEmpty()) config.sessionTimes else listOf(300, 600, 1200, 1800)
+                
+                // 2. Calculate remaining daily allowance in minutes
+                val dailyLimit = usageStats.second
+                val dailyUsed = usageStats.first
+                
+                if (dailyLimit > 0) {
+                    val remainingMins = (dailyLimit - dailyUsed).coerceAtLeast(1) // Ensure at least 1m
+                    
+                    // 3. Clamp buttons: If a button > remainingMins, make it equal to remainingMins
+                    sessionOptions = rawOptions.map { seconds ->
+                        val optionMins = seconds / 60
+                        if (optionMins > remainingMins) {
+                            remainingMins * 60
+                        } else {
+                            seconds
+                        }
+                    }.distinct().sorted() // Remove duplicates and sort
+                } else {
+                    sessionOptions = rawOptions
                 }
+                // --- SMART UI LOGIC END ---
                 
                 val isLimitReached = usageStats.second > 0 && usageStats.first >= usageStats.second
                 if (!isLockedOut && !isLimitReached) {
@@ -94,7 +116,7 @@ fun BlockingSessionScreen(pkgName: String) {
             .fillMaxSize()
             .background(Color.Black)
             .padding(24.dp)
-            .verticalScroll(rememberScrollState()), // Added scroll for safety with many buttons
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -231,7 +253,6 @@ fun BlockingSessionScreen(pkgName: String) {
         val buttonAlpha by animateFloatAsState(if (canSelectSession) 1f else 0.3f, label = "alpha")
 
         // --- DYNAMIC GRID GENERATION ---
-        // Chunks the options into rows of 2 items each
         val rows = sessionOptions.chunked(2)
         
         rows.forEach { rowItems ->
@@ -245,12 +266,10 @@ fun BlockingSessionScreen(pkgName: String) {
                         status = penaltyStatus, 
                         modifier = Modifier.weight(1f)
                     )
-                    // Add spacer between buttons
                     if (index == 0 && rowItems.size > 1) {
                         Spacer(modifier = Modifier.width(16.dp))
                     }
                 }
-                // If row has only 1 item, add an invisible spacer to keep the button left-aligned/sized correctly
                 if (rowItems.size == 1) {
                      Spacer(modifier = Modifier.width(16.dp))
                      Spacer(modifier = Modifier.weight(1f))
