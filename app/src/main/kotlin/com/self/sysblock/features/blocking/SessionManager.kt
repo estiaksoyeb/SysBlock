@@ -46,9 +46,8 @@ class SessionManager(
             if (!isSessionValid || isLockedOut || isOverLimit) {
                 OverlayController.hide()
                 launchBlockScreen(pkg)
-                // Do NOT clear currentMonitoredPackage here immediately to avoid loop race conditions
-                // Instead, stopMonitoring() will be called by the service when window changes
-                // or we can just stop the loop here.
+                // We clear the monitored package to stop the loop, 
+                // but we don't call stopMonitoring() to avoid recursion issues.
                 handler.removeCallbacks(this)
                 currentMonitoredPackage = null
                 return
@@ -62,19 +61,23 @@ class SessionManager(
                 OverlayController.hide()
             }
             
-            // 6. LOOP
+            // 6. LOOP (Keep running!)
             handler.postDelayed(this, 200)
         }
     }
 
     fun startMonitoring(pkg: String) {
-        // If we are already monitoring this package, do nothing.
-        // This prevents the loop from being reset constantly by scroll events.
+        // Idempotent: If already monitoring this package, do nothing (keep the loop alive)
         if (currentMonitoredPackage == pkg) return
         
         currentMonitoredPackage = pkg
         handler.removeCallbacks(sessionCheckerRunnable)
         handler.post(sessionCheckerRunnable)
+    }
+    
+    // Helper to check what we are currently tracking
+    fun isMonitoring(pkg: String): Boolean {
+        return currentMonitoredPackage == pkg
     }
 
     fun stopMonitoring() {

@@ -52,8 +52,6 @@ class BlockerService : AccessibilityService() {
         val eventType = event.eventType
 
         // --- 1. SECURITY WATCHDOG ---
-        // We check Watchdog on WindowStateChanged (Standard) AND ContentChanged (Fixes laggy titles)
-        // We only check ContentChanged for Settings/Installer to save battery.
         val isSettingsEvent = pkgName == "com.android.settings" || 
                               pkgName.contains("packageinstaller") || 
                               pkgName.contains("permissioncontroller")
@@ -70,12 +68,33 @@ class BlockerService : AccessibilityService() {
         }
 
         // --- 2. MAIN BLOCKING LOGIC ---
-        // Only run main blocking logic on WindowStateChanged (New app opened)
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             
-            // Stop monitoring previous app
+            // [FIX] Define "Transient" apps. 
+            // These are system overlays that might steal focus but should NOT kill the session.
+            val isTransient = pkgName == "com.android.systemui" || 
+                              pkgName == "android" || 
+                              pkgName == "com.google.android.inputmethod.latin" ||
+                              pkgName == "com.self.sysblock" // Our own overlays
+
+            if (isTransient) {
+                // If it's a transient app, we simply ignore it. 
+                // We DO NOT call stopMonitoring(). The loop keeps running for the underlying app.
+                return
+            }
+
+            // [FIX] Logic Check: Are we switching to a NEW app?
+            // If we are still in the monitored package, just ensure the loop is running (refresh).
+            if (sessionManager.isMonitoring(pkgName)) {
+                sessionManager.startMonitoring(pkgName)
+                return
+            }
+
+            // If we reached here, we are definitely in a NEW, NON-TRANSIENT app.
+            // NOW it is safe to stop the previous session.
             sessionManager.stopMonitoring()
 
+            // Proceed to start a new session if this new app is blocked
             if (IGNORED_PACKAGES.contains(pkgName)) return
             val config = cachedConfig
             if (config == null || !config.masterSwitch) return

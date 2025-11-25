@@ -177,23 +177,54 @@ fun HelpDialog(onDismiss: () -> Unit) {
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Text("SYSTEM MANUAL", color = Color.Green, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("1. Configuration", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Rules format:\nPackage | Limit(m) | StrictMode\nPREVENT_UNINSTALL", color = Color.Gray, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("2. Strict Mode", color = Color.Red, fontWeight = FontWeight.Bold)
-                Text("Blocks immediately when limit exceeded.", color = Color.Gray, fontSize = 14.sp)
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    "SYSTEM MANUAL", 
+                    color = Color.Green, 
+                    fontSize = 20.sp, 
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))) {
+                
+                Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    HelpSection(
+                        "1. App Lock Rules", 
+                        "Format: SET | APPLOCK | package | time\nExample: SET | APPLOCK | com.facebook.katana | 30m\n(Time can be '30m', '1h', '1h30m')"
+                    )
+                    HelpSection(
+                        "2. Session Times", 
+                        "Customize the timer buttons:\nSET | SESSION_TIME | 5 | 10 | 20 | 30\n(Values are in minutes)"
+                    )
+                    HelpSection(
+                        "3. Security", 
+                        "Add 'PREVENT_UNINSTALL' on a new line to activate self-protection.\nThis prevents force-stop and uninstalling."
+                    )
+                    HelpSection(
+                        "4. Freeze Protocols", 
+                        "Use the Gear icon ⚙️ in the editor to set times when the config cannot be edited."
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
+                ) {
                     Text("ACKNOWLEDGE")
                 }
             }
         }
+    }
+}
+
+@Composable
+fun HelpSection(title: String, content: String) {
+    Column(modifier = Modifier.padding(bottom = 16.dp)) {
+        Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(content, color = Color.Gray, fontSize = 14.sp, lineHeight = 20.sp)
     }
 }
