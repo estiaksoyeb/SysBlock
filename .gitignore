@@ -60,3 +60,6 @@ keystore.properties
 
 # Mac OS junk
 .DS_Store
+
+# Editor Junk
+.acside/
