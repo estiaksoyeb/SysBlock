@@ -192,7 +192,7 @@ fun FreezeSettingsDialog(
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
                 ) {
-                    Text("CLOSE MANAGER")
+                    Text("CLOSE MANAGER", color = Color.White)
                 }
             }
         }
@@ -251,7 +251,7 @@ fun FreezeSettingsDialog(
                         ruleToConfirm = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600))
-                ) { Text("Confirm") }
+                ) { Text("Confirm", color = Color.White) }
             },
             dismissButton = {
                 TextButton(onClick = { ruleToConfirm = null }) { Text("Cancel") }

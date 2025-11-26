@@ -213,7 +213,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
                 ) {
-                    Text("ACKNOWLEDGE")
+                    Text("ACKNOWLEDGE", color = Color.White)
                 }
             }
         }

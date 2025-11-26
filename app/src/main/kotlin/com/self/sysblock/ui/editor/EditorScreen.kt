@@ -274,7 +274,7 @@ fun EditorScreen(onBack: () -> Unit) {
                         onBack()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600))
-                ) { Text("Apply Config") }
+                ) { Text("Apply Config", color = Color.White) }
             },
             dismissButton = { TextButton(onClick = { validationResult = null }) { Text("Cancel") } },
             containerColor = Color(0xFF222222)
