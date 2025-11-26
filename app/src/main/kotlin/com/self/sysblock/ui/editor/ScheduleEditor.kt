@@ -6,9 +6,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -35,16 +37,20 @@ import java.util.Calendar
 fun FreezeSettingsDialog(
     context: Context,
     currentLineCount: Int,
+    codeLines: List<String>, // [UPDATED] New parameter
     onDismiss: () -> Unit
 ) {
     var rules by remember { mutableStateOf(FreezeManager.getRules(context)) }
     
     var newStartH by remember { mutableStateOf("08") }
     var newStartM by remember { mutableStateOf("00") }
-    var newEndH by remember { mutableStateOf("17") }
+    var newEndH by remember { mutableStateOf("10") }
     var newEndM by remember { mutableStateOf("00") }
     var newStartLine by remember { mutableStateOf("1") }
     var newEndLine by remember { mutableStateOf("5") }
+
+    // [UPDATED] State to trigger confirmation popup
+    var ruleToConfirm by remember { mutableStateOf<FreezeManager.FreezeRule?>(null) }
 
     val startH = newStartH.toIntOrNull() ?: -1
     val startM = newStartM.toIntOrNull() ?: -1
@@ -152,20 +158,12 @@ fun FreezeSettingsDialog(
                     IconButton(
                         onClick = {
                             if (canAdd) {
-                                val ranges = mutableListOf<IntRange>()
-                                ranges.add(startLine..endLine)
-
-                                val newRulesList = rules.toMutableList()
-                                for (range in ranges) {
-                                    val rule = FreezeManager.FreezeRule(
-                                        startHour = startH, startMinute = startM,
-                                        endHour = endH, endMinute = endM,
-                                        startLine = range.first, endLine = range.last
-                                    )
-                                    newRulesList.add(rule)
-                                }
-                                rules = newRulesList
-                                FreezeManager.saveRules(context, rules)
+                                // [UPDATED] Trigger confirmation instead of saving immediately
+                                ruleToConfirm = FreezeManager.FreezeRule(
+                                    startHour = startH, startMinute = startM,
+                                    endHour = endH, endMinute = endM,
+                                    startLine = startLine, endLine = endLine
+                                )
                             }
                         },
                         enabled = canAdd,
@@ -199,6 +197,75 @@ fun FreezeSettingsDialog(
             }
         }
     }
+
+    // [UPDATED] Confirmation Dialog
+    if (ruleToConfirm != null) {
+        val rule = ruleToConfirm!!
+        val startStr = formatTime12h(rule.startHour, rule.startMinute)
+        val endStr = formatTime12h(rule.endHour, rule.endMinute)
+
+        // Extract the actual code text for preview
+        val snippet = try {
+            val sIndex = (rule.startLine - 1).coerceAtLeast(0)
+            val eIndex = rule.endLine.coerceAtMost(codeLines.size)
+            if (sIndex < eIndex) {
+                codeLines.subList(sIndex, eIndex).joinToString("\n")
+            } else "(No lines selected)"
+        } catch (e: Exception) { "Error reading lines" }
+
+        AlertDialog(
+            onDismissRequest = { ruleToConfirm = null },
+            title = { Text("Confirm Freeze", color = Color.Green, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("You are freezing lines ${rule.startLine} - ${rule.endLine}.", color = Color.White)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "You will only be able to modify these lines from $startStr to $endStr.", 
+                        color = Color(0xFFFF8800),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Content:", color = Color.Gray, fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 120.dp)
+                            .background(Color.Black)
+                            .border(1.dp, Color.DarkGray)
+                            .padding(8.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(snippet, color = Color.LightGray, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newRulesList = rules.toMutableList()
+                        newRulesList.add(rule)
+                        rules = newRulesList
+                        FreezeManager.saveRules(context, rules)
+                        ruleToConfirm = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600))
+                ) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { ruleToConfirm = null }) { Text("Cancel") }
+            },
+            containerColor = Color(0xFF222222)
+        )
+    }
+}
+
+// [UPDATED] Helper for 12h formatting
+fun formatTime12h(h: Int, m: Int): String {
+    val amPm = if (h < 12) "AM" else "PM"
+    val hour12 = if (h == 0) 12 else if (h > 12) h - 12 else h
+    return String.format("%02d:%02d %s", hour12, m, amPm)
 }
 
 @Composable

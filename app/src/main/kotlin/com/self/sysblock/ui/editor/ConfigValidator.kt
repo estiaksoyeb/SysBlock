@@ -3,14 +3,15 @@ package com.self.sysblock.features.validation
 data class ValidationResult(
     val errorLine: Int = -1, 
     val errorMessage: String = "", 
-    val summary: String = ""
+    val ruleCount: Int = 0,
+    val hasUninstallProtection: Boolean = false
 )
 
 object ConfigValidator {
     fun validate(text: String): ValidationResult {
         val lines = text.lines()
         var ruleCount = 0
-        val summaryBuilder = StringBuilder()
+        var hasUninstallProtection = false
         val seenPackages = mutableSetOf<String>()
 
         lines.forEachIndexed { index, line ->
@@ -19,7 +20,7 @@ object ConfigValidator {
             if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEachIndexed
 
             if (trimmed == "PREVENT_UNINSTALL") {
-                 summaryBuilder.append("• Uninstall Protection Active\n")
+                 hasUninstallProtection = true
                  return@forEachIndexed
             }
 
@@ -39,7 +40,6 @@ object ConfigValidator {
                         if (parts.size < 3) return ValidationResult(lineNum, "Session times missing.")
                     }
                     "APPLOCK" -> {
-                        // Format: SET | APPLOCK | pkg | time
                         if (parts.size < 4) return ValidationResult(lineNum, "AppLock needs: Package | Time")
                         
                         val pkg = parts[2]
@@ -52,14 +52,12 @@ object ConfigValidator {
                         
                         if (timeStr.isEmpty()) return ValidationResult(lineNum, "Time cannot be empty.")
                         
-                        // SAFETY CHECK: Minimum 5 Minutes
                         val minutes = parseDuration(timeStr)
                         if (minutes < 5) {
                             return ValidationResult(lineNum, "Safety: Time must be at least 5m.")
                         }
                         
                         ruleCount++
-                        summaryBuilder.append("• ${pkg.takeLast(15)} [$timeStr]\n")
                     }
                     else -> return ValidationResult(lineNum, "Unknown Command: '$key'")
                 }
@@ -70,20 +68,16 @@ object ConfigValidator {
                     if (seenPackages.contains(pkg)) return ValidationResult(lineNum, "Duplicate rule for '$pkg'.")
                     seenPackages.add(pkg)
                     ruleCount++
-                    summaryBuilder.append("• ${pkg.takeLast(15)} (Legacy)\n")
                 }
             }
         }
-        return ValidationResult(summary = "Active Rules: $ruleCount\n\n$summaryBuilder")
+        return ValidationResult(ruleCount = ruleCount, hasUninstallProtection = hasUninstallProtection)
     }
 
-    // Helper to parse "1h", "30m", "90" into minutes (Duplicated from Parser for independence)
     private fun parseDuration(input: String): Int {
         input.toIntOrNull()?.let { return it }
-
         var totalMinutes = 0
         var currentNumber = ""
-        
         for (char in input.lowercase()) {
             if (char.isDigit()) {
                 currentNumber += char
@@ -95,11 +89,7 @@ object ConfigValidator {
                 currentNumber = ""
             }
         }
-        
-        if (currentNumber.isNotEmpty()) {
-            totalMinutes += currentNumber.toIntOrNull() ?: 0
-        }
-        
+        if (currentNumber.isNotEmpty()) totalMinutes += currentNumber.toIntOrNull() ?: 0
         return totalMinutes
     }
 }
